@@ -22,7 +22,7 @@ async function bootstrapServer(): Promise<HttpServer> {
         import('../src/app.config.js'),
       ]);
 
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, { abortOnError: false });
     configureApp(app);
     await app.init();
     cachedServer = app.getHttpAdapter().getInstance() as HttpServer;
@@ -35,9 +35,18 @@ export default async function handler(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ) {
-  if (req.url?.startsWith('/favicon.ico')) {
+  if (req.url?.startsWith('/favicon.ico') || req.url?.startsWith('/favicon.png')) {
     res.statusCode = 204;
     return res.end();
+  }
+
+  if (req.url === '/' || req.url?.startsWith('/api/health')) {
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    }));
   }
 
   try {
