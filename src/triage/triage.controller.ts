@@ -6,7 +6,6 @@ import {
   Post,
   ValidationPipe,
 } from '@nestjs/common';
-import { Triage } from '../shared/entities/triage.entity';
 import { TriageMockRequestDto } from './dto/triage-mock-request.dto';
 import { TriageRequestDto } from './dto/triage-request.dto';
 import { TriageResponseDto } from './dto/triage-response.dto';
@@ -18,7 +17,7 @@ export class TriageController {
 
   @Post('chat')
   @HttpCode(HttpStatus.CREATED)
-  triageChat(@Body(ValidationPipe) dto: TriageRequestDto): Promise<Triage> {
+  triageChat(@Body(ValidationPipe) dto: TriageRequestDto): Promise<TriageResponseDto> {
     return this.triageService.createTriage(dto);
   }
 

@@ -1,15 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Triage } from '../shared/entities/triage.entity';
 import { TriageRequestDto } from './dto/triage-request.dto';
 import { TriageResponseDto } from './dto/triage-response.dto';
 import { TriageController } from './triage.controller';
 import { TriageService } from './triage.service';
 
-const mockTriage: Triage = {
-  id: 1,
+const mockTriageResponse: TriageResponseDto = {
   symptoms: 'Febre alta e dor de cabeça',
-  risk: 'ESI-2',
-  justification: 'Sintomas sugestivos de condição grave',
+  classificacao: 'ESI-2',
+  nivel: 2,
+  nome_nivel: 'Emergente',
+  ponto_decisao_ativado: 'B',
+  criterios_ponto_decisao: ['Febre alta', 'Dor de cabeça intensa'],
+  recursos_estimados: 3,
+  justificativa: 'Sintomas sugestivos de condição grave',
 };
 
 const validDto: TriageRequestDto = {
@@ -42,32 +45,22 @@ describe('TriageController', () => {
 
   describe('triageChat', () => {
     it('should call createTriage and return result', async () => {
-      service.createTriage.mockResolvedValue(mockTriage);
+      service.createTriage.mockResolvedValue(mockTriageResponse);
 
       const result = await controller.triageChat(validDto);
 
-      expect(result).toBe(mockTriage);
+      expect(result).toBe(mockTriageResponse);
       expect(service.createTriage).toHaveBeenCalledWith(validDto);
     });
   });
 
   describe('triageChatMock', () => {
     it('should call createTriageMock and return result', async () => {
-      const mockResult: TriageResponseDto = {
-        symptoms: 'Febre alta e dor de cabeça',
-        classificacao: 'ESI-2',
-        nivel: 2,
-        nome_nivel: 'Emergente',
-        ponto_decisao_ativado: 'B',
-        criterios_ponto_decisao: ['Febre alta', 'Dor de cabeça intensa'],
-        recursos_estimados: 3,
-        justificativa: 'Sintomas sugestivos de condição grave',
-      };
-      service.createTriageMock.mockResolvedValue(mockResult);
+      service.createTriageMock.mockResolvedValue(mockTriageResponse);
 
       const result = await controller.triageChatMock(validDto);
 
-      expect(result).toBe(mockResult);
+      expect(result).toBe(mockTriageResponse);
       expect(service.createTriageMock).toHaveBeenCalledWith(validDto.symptoms);
     });
   });

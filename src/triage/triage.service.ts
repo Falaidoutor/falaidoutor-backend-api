@@ -25,7 +25,7 @@ export class TriageService {
       .replace(/\/$/, '');
   }
 
-  async createTriage(dto: TriageRequestDto): Promise<Triage> {
+  async createTriage(dto: TriageRequestDto): Promise<TriageResponseDto> {
     const { queueId, queueTicket, symptoms } = dto;
 
     if (!symptoms || symptoms.trim().length === 0) {
@@ -39,12 +39,12 @@ export class TriageService {
 
     await this.queueTriageService.getValidQueueTriage(queueIdNum, queueTicket);
 
-    const { triage } = await this.processAiTriage(symptoms);
+    const { triage, aiData } = await this.processAiTriage(symptoms);
     const savedTriage = await this.triageRepository.save(triage);
 
     await this.queueTriageService.linkTriageAndUpdateStatus(queueIdNum, savedTriage.id);
 
-    return savedTriage;
+    return this.toTriageResponseDto(symptoms, savedTriage.risk, savedTriage.justification, aiData);
   }
 
   async createTriageMock(symptoms: string): Promise<TriageResponseDto> {
@@ -54,15 +54,24 @@ export class TriageService {
 
     const { triage, aiData } = await this.processAiTriage(symptoms);
 
+    return this.toTriageResponseDto(triage.symptoms, triage.risk, triage.justification, aiData);
+  }
+
+  private toTriageResponseDto(
+    symptoms: string,
+    classificacao: string,
+    justificativa: string,
+    aiData: Record<string, any>,
+  ): TriageResponseDto {
     return {
-      symptoms: triage.symptoms,
-      classificacao: triage.risk,
+      symptoms,
+      classificacao,
       nivel: aiData.nivel,
       nome_nivel: aiData.nome_nivel,
       ponto_decisao_ativado: aiData.ponto_decisao_ativado,
       criterios_ponto_decisao: aiData.criterios_ponto_decisao,
       recursos_estimados: aiData.recursos_estimados,
-      justificativa: triage.justification,
+      justificativa,
     };
   }
 

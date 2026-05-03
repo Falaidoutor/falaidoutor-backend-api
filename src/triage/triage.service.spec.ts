@@ -59,6 +59,12 @@ describe('TriageService', () => {
         {
           provide: ConfigService,
           useValue: {
+            get: jest.fn((key: string) => {
+              const config: Record<string, string> = {
+                TRIAGE_SERVICE_URL: 'http://localhost:8000',
+              };
+              return config[key];
+            }),
             getOrThrow: jest.fn((key: string) => {
               const config: Record<string, string> = {
                 TRIAGE_SERVICE_URL: 'http://localhost:8000',
@@ -145,7 +151,13 @@ describe('TriageService', () => {
           justification: 'Sintomas sugestivos de condição grave',
         }),
       );
-      expect(result).toBeDefined();
+      expect(result).toEqual(
+        expect.objectContaining({
+          symptoms: validDto.symptoms,
+          classificacao: 'ESI-2',
+          justificativa: 'Sintomas sugestivos de condição grave',
+        }),
+      );
     });
 
     it('should throw BusinessException when triage service returns error', async () => {
