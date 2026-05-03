@@ -11,7 +11,7 @@ import { TriageResponseDto } from './dto/triage-response.dto';
 @Injectable()
 export class TriageService {
   private readonly logger = new Logger(TriageService.name);
-  private readonly triageServiceUrl: string;
+  private readonly triageServiceUrl?: string;
 
   constructor(
     @InjectRepository(Triage)
@@ -19,7 +19,10 @@ export class TriageService {
     private readonly queueTriageService: QueueTriageService,
     private readonly configService: ConfigService,
   ) {
-    this.triageServiceUrl = this.configService.getOrThrow<string>('TRIAGE_SERVICE_URL');
+    this.triageServiceUrl = this.configService
+      .get<string>('TRIAGE_SERVICE_URL')
+      ?.trim()
+      .replace(/\/$/, '');
   }
 
   async createTriage(dto: TriageRequestDto): Promise<Triage> {
@@ -64,6 +67,10 @@ export class TriageService {
   }
 
   private async processAiTriage(symptoms: string): Promise<{ triage: Triage; aiData: Record<string, any> }> {
+    if (!this.triageServiceUrl) {
+      throw new BusinessException('Serviço de triagem indisponível.');
+    }
+
     this.logger.log(`Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`);
 
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
