@@ -14,7 +14,6 @@ interface FinalizedTriageRow {
   age: string;
   queue_ticket: string;
   risk: string;
-  priority: string;
 }
 
 @Injectable()
@@ -56,8 +55,7 @@ export class QueueTriageService {
         p.gender AS gender,
         p.age AS age,
         qt.queue_ticket AS queue_ticket,
-        t.risk AS risk,
-        t.priority AS priority
+        t.risk AS risk
       FROM falaidoutor.queue_triage qt
       LEFT JOIN falaidoutor.patient p ON qt.patient_id = p.id
       LEFT JOIN falaidoutor.triage t ON qt.triage_id = t.id
@@ -65,11 +63,11 @@ export class QueueTriageService {
       WHERE qt.status_id = 1
       ORDER BY
         CASE t.risk
-          WHEN 'Vermelho' THEN 1
-          WHEN 'Laranja' THEN 2
-          WHEN 'Amarelo' THEN 3
-          WHEN 'Verde' THEN 4
-          WHEN 'Azul' THEN 5
+          WHEN 'ESI-1' THEN 1
+          WHEN 'ESI-2' THEN 2
+          WHEN 'ESI-3' THEN 3
+          WHEN 'ESI-4' THEN 4
+          WHEN 'ESI-5' THEN 5
           ELSE 6
         END ASC,
         qt.queue_ticket ASC
@@ -82,7 +80,7 @@ export class QueueTriageService {
       age: Number(row.age),
       queueTicket: row.queue_ticket,
       classificacao: row.risk,
-      prioridade: row.priority,
+      prioridade: RISK_PRIORITY[row.risk as RiskLevel] ? String(RISK_PRIORITY[row.risk as RiskLevel]) : '',
     }));
   }
 
@@ -102,6 +100,17 @@ export class QueueTriageService {
     const createdAtDate = dateObj.toLocaleDateString('pt-BR');
     const createdAtTime = dateObj.toLocaleTimeString('pt-BR');
 
+    const risk = triage?.risk ?? '';
+
+    const nivel = RISK_PRIORITY[risk as RiskLevel] ?? 0;
+    const nomeNivelMap: Record<number, string> = {
+      1: 'Ressuscitação',
+      2: 'Emergente',
+      3: 'Urgente',
+      4: 'Menos urgente',
+      5: 'Não urgente',
+    };
+
     return {
       queueId: queueTriage.id,
       name: patient.name,
@@ -109,11 +118,12 @@ export class QueueTriageService {
       age: patient.age,
       queueTicket: queueTriage.queueTicket,
       symptoms: triage?.symptoms ?? '',
-      classificacao: triage?.risk ?? '',
-      prioridade: triage?.priority ?? '',
-      tempo_atendimento: triage?.serviceTime ?? '',
-      fluxograma_utilizado: triage?.flowchart ?? '',
-      discriminadores_ativados: triage?.activatedDiscriminators ?? [],
+      classificacao: risk,
+      nivel,
+      nome_nivel: nomeNivelMap[nivel] ?? '',
+      ponto_decisao_ativado: '',
+      criterios_ponto_decisao: [],
+      recursos_estimados: 0,
       justificativa: triage?.justification ?? '',
       createdAtDate,
       createdAtTime,

@@ -11,20 +11,17 @@ import { TriageRequestDto } from './dto/triage-request.dto';
 const mockTriageEntity: Triage = {
   id: 1,
   symptoms: 'Febre alta e dor de cabeça',
-  risk: 'Laranja',
-  priority: 'Muito urgente',
-  serviceTime: '10 minutos',
-  flowchart: 'Adulto com febre',
-  activatedDiscriminators: ['Febre alta', 'Dor de cabeça intensa'],
+  risk: 'ESI-2',
   justification: 'Sintomas sugestivos de condição grave',
 };
 
 const mockApiResponse = {
-  classificacao: 'Laranja',
-  prioridade: 'Muito urgente',
-  tempo_atendimento: '10 minutos',
-  fluxograma_utilizado: 'Adulto com febre',
-  discriminadores_ativados: ['Febre alta', 'Dor de cabeça intensa'],
+  classificacao: 'ESI-2',
+  nivel: 2,
+  nome_nivel: 'Emergente',
+  ponto_decisao_ativado: 'B',
+  criterios_ponto_decisao: ['Febre alta', 'Dor de cabeça intensa'],
+  recursos_estimados: 3,
   justificativa: 'Sintomas sugestivos de condição grave',
 };
 
@@ -99,11 +96,12 @@ describe('TriageService', () => {
 
       const result = await service.createTriageMock(validDto.symptoms);
 
-      expect(result.classificacao).toBe('Laranja');
-      expect(result.prioridade).toBe('Muito urgente');
-      expect(result.tempo_atendimento).toBe('10 minutos');
-      expect(result.fluxograma_utilizado).toBe('Adulto com febre');
-      expect(result.discriminadores_ativados).toEqual(['Febre alta', 'Dor de cabeça intensa']);
+      expect(result.classificacao).toBe('ESI-2');
+      expect(result.nivel).toBe(2);
+      expect(result.nome_nivel).toBe('Emergente');
+      expect(result.ponto_decisao_ativado).toBe('B');
+      expect(result.criterios_ponto_decisao).toEqual(['Febre alta', 'Dor de cabeça intensa']);
+      expect(result.recursos_estimados).toBe(3);
       expect(result.justificativa).toBe('Sintomas sugestivos de condição grave');
     });
   });
@@ -143,9 +141,8 @@ describe('TriageService', () => {
       );
       expect(triageRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          risk: 'Laranja',
-          priority: 'Muito urgente',
-          flowchart: 'Adulto com febre',
+          risk: 'ESI-2',
+          justification: 'Sintomas sugestivos de condição grave',
         }),
       );
       expect(result).toBeDefined();

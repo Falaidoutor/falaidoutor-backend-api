@@ -11,18 +11,6 @@ export class Triage {
   @Column({ nullable: false })
   risk: string;
 
-  @Column({ nullable: false })
-  priority: string;
-
-  @Column({ name: 'service_time', nullable: false })
-  serviceTime: string;
-
-  @Column({ name: 'flowchart', nullable: false })
-  flowchart: string;
-
-  @Column({ name: 'activated_discriminators', type: 'text', array: true, nullable: false })
-  activatedDiscriminators: string[];
-
   @Column({ nullable: false, type: 'text' })
   justification: string;
 }

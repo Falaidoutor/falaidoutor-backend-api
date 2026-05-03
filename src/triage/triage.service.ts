@@ -36,7 +36,7 @@ export class TriageService {
 
     await this.queueTriageService.getValidQueueTriage(queueIdNum, queueTicket);
 
-    const triage = await this.processAiTriage(symptoms);
+    const { triage } = await this.processAiTriage(symptoms);
     const savedTriage = await this.triageRepository.save(triage);
 
     await this.queueTriageService.linkTriageAndUpdateStatus(queueIdNum, savedTriage.id);
@@ -49,20 +49,21 @@ export class TriageService {
       throw new BusinessException('Lista de sintomas não pode ser vazia.');
     }
 
-    const triage = await this.processAiTriage(symptoms);
+    const { triage, aiData } = await this.processAiTriage(symptoms);
 
     return {
       symptoms: triage.symptoms,
       classificacao: triage.risk,
-      prioridade: triage.priority,
-      tempo_atendimento: triage.serviceTime,
-      fluxograma_utilizado: triage.flowchart,
-      discriminadores_ativados: triage.activatedDiscriminators,
+      nivel: aiData.nivel,
+      nome_nivel: aiData.nome_nivel,
+      ponto_decisao_ativado: aiData.ponto_decisao_ativado,
+      criterios_ponto_decisao: aiData.criterios_ponto_decisao,
+      recursos_estimados: aiData.recursos_estimados,
       justificativa: triage.justification,
     };
   }
 
-  private async processAiTriage(symptoms: string): Promise<Triage> {
+  private async processAiTriage(symptoms: string): Promise<{ triage: Triage; aiData: Record<string, any> }> {
     this.logger.log(`Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`);
 
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
@@ -76,16 +77,14 @@ export class TriageService {
     }
 
     const data = await response.json();
-    this.logger.log(`Resposta triagem: classificacao=${data.classificacao}, prioridade=${data.prioridade}`);
+    this.logger.log(`Resposta triagem: classificacao=${data.classificacao}, nivel=${data.nivel}`);
 
-    return this.triageRepository.create({
+    const triage = this.triageRepository.create({
       symptoms,
       risk: data.classificacao,
-      priority: data.prioridade,
-      serviceTime: data.tempo_atendimento,
-      flowchart: data.fluxograma_utilizado,
-      activatedDiscriminators: data.discriminadores_ativados,
       justification: data.justificativa,
     });
+
+    return { triage, aiData: data };
   }
 }

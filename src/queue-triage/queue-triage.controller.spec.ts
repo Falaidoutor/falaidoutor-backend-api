@@ -5,7 +5,7 @@ import { QueueTriageController } from './queue-triage.controller';
 import { QueueTriageService } from './queue-triage.service';
 
 const mockList: TriageListDto[] = [
-  { queueId: 1, name: 'João', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'Laranja', prioridade: 'Muito urgente' },
+  { queueId: 1, name: 'João', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'ESI-2', prioridade: '2' },
 ];
 
 const mockDetail: FinalizedTriageDto = {
@@ -15,11 +15,12 @@ const mockDetail: FinalizedTriageDto = {
   age: 30,
   queueTicket: 'A001',
   symptoms: 'Febre alta',
-  classificacao: 'Laranja',
-  prioridade: 'Muito urgente',
-  tempo_atendimento: '10 minutos',
-  fluxograma_utilizado: 'Adulto com febre',
-  discriminadores_ativados: ['Febre alta'],
+  classificacao: 'ESI-2',
+  nivel: 2,
+  nome_nivel: 'Emergente',
+  ponto_decisao_ativado: 'B',
+  criterios_ponto_decisao: ['Febre alta'],
+  recursos_estimados: 3,
   justificativa: 'Febre acima de 39°C',
   createdAtDate: '15/01/2024',
   createdAtTime: '10:30:00',

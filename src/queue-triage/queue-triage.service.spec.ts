@@ -11,11 +11,7 @@ const mockPatient = { id: 1, name: 'João Silva', cpf: '12345678901', age: 30, g
 const mockTriage = {
   id: 1,
   symptoms: 'Febre alta',
-  risk: 'Laranja',
-  priority: 'Muito urgente',
-  serviceTime: '10 minutos',
-  flowchart: 'Adulto com febre',
-  activatedDiscriminators: ['Febre alta'],
+  risk: 'ESI-2',
   justification: 'Febre acima de 39°C',
 };
 const mockStatus = { id: 2, statusName: 'Aguardando' };
@@ -111,8 +107,7 @@ describe('QueueTriageService', () => {
           gender: 'M',
           age: '30',
           queue_ticket: 'A001',
-          risk: 'Laranja',
-          priority: 'Muito urgente',
+          risk: 'ESI-2',
         },
       ];
       repo.query.mockResolvedValue(rows);
@@ -120,7 +115,7 @@ describe('QueueTriageService', () => {
       const result = await service.getFinalizedTriages();
 
       expect(result).toEqual([
-        { queueId: 1, name: 'João Silva', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'Laranja', prioridade: 'Muito urgente' },
+        { queueId: 1, name: 'João Silva', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'ESI-2', prioridade: '2' },
       ]);
     });
 
@@ -143,8 +138,9 @@ describe('QueueTriageService', () => {
       expect(result.queueId).toBe(1);
       expect(result.name).toBe('João Silva');
       expect(result.symptoms).toBe('Febre alta');
-      expect(result.classificacao).toBe('Laranja');
-      expect(result.prioridade).toBe('Muito urgente');
+      expect(result.classificacao).toBe('ESI-2');
+      expect(result.nivel).toBe(2);
+      expect(result.nome_nivel).toBe('Emergente');
       expect(result.justificativa).toBe('Febre acima de 39°C');
       expect(result.createdAtDate).toBeDefined();
       expect(result.createdAtTime).toBeDefined();
@@ -171,22 +167,22 @@ describe('QueueTriageService', () => {
   describe('sortByRiskPriority', () => {
     it('should sort triages by risk priority', () => {
       const triages: TriageListDto[] = [
-        { queueId: 3, name: 'C', gender: 'M', age: 20, queueTicket: 'C001', classificacao: 'Verde', prioridade: 'Pouco urgente' },
-        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'Vermelho', prioridade: 'Emergência' },
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'Amarelo', prioridade: 'Urgente' },
+        { queueId: 3, name: 'C', gender: 'M', age: 20, queueTicket: 'C001', classificacao: 'ESI-4', prioridade: '4' },
+        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'ESI-1', prioridade: '1' },
+        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-3', prioridade: '3' },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
 
-      expect(sorted[0].classificacao).toBe('Vermelho');
-      expect(sorted[1].classificacao).toBe('Amarelo');
-      expect(sorted[2].classificacao).toBe('Verde');
+      expect(sorted[0].classificacao).toBe('ESI-1');
+      expect(sorted[1].classificacao).toBe('ESI-3');
+      expect(sorted[2].classificacao).toBe('ESI-4');
     });
 
     it('should sort by queueTicket when risk is the same', () => {
       const triages: TriageListDto[] = [
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'Amarelo', prioridade: 'Urgente' },
-        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'Amarelo', prioridade: 'Urgente' },
+        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-3', prioridade: '3' },
+        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'ESI-3', prioridade: '3' },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
@@ -198,12 +194,12 @@ describe('QueueTriageService', () => {
     it('should assign priority 6 to unknown risk levels', () => {
       const triages: TriageListDto[] = [
         { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'Desconhecido', prioridade: '?' },
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'Vermelho', prioridade: 'Emergência' },
+        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-1', prioridade: '1' },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
 
-      expect(sorted[0].classificacao).toBe('Vermelho');
+      expect(sorted[0].classificacao).toBe('ESI-1');
       expect(sorted[1].classificacao).toBe('Desconhecido');
     });
   });

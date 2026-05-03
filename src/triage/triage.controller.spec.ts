@@ -8,11 +8,7 @@ import { TriageService } from './triage.service';
 const mockTriage: Triage = {
   id: 1,
   symptoms: 'Febre alta e dor de cabeça',
-  risk: 'Laranja',
-  priority: 'Muito urgente',
-  serviceTime: '10 minutos',
-  flowchart: 'Adulto com febre',
-  activatedDiscriminators: ['Febre alta', 'Dor de cabeça intensa'],
+  risk: 'ESI-2',
   justification: 'Sintomas sugestivos de condição grave',
 };
 
@@ -59,11 +55,12 @@ describe('TriageController', () => {
     it('should call createTriageMock and return result', async () => {
       const mockResult: TriageResponseDto = {
         symptoms: 'Febre alta e dor de cabeça',
-        classificacao: 'Laranja',
-        prioridade: 'Muito urgente',
-        tempo_atendimento: '10 minutos',
-        fluxograma_utilizado: 'Adulto com febre',
-        discriminadores_ativados: ['Febre alta', 'Dor de cabeça intensa'],
+        classificacao: 'ESI-2',
+        nivel: 2,
+        nome_nivel: 'Emergente',
+        ponto_decisao_ativado: 'B',
+        criterios_ponto_decisao: ['Febre alta', 'Dor de cabeça intensa'],
+        recursos_estimados: 3,
         justificativa: 'Sintomas sugestivos de condição grave',
       };
       service.createTriageMock.mockResolvedValue(mockResult);
