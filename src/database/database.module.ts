@@ -20,6 +20,13 @@ function getDatabaseConfig(config: ConfigService): TypeOrmModuleOptions {
     entities,
     synchronize: false,
     logging: false,
+    retryAttempts: Number(config.get<string>('DB_RETRY_ATTEMPTS', '1')),
+    retryDelay: Number(config.get<string>('DB_RETRY_DELAY', '1000')),
+    extra: {
+      connectionTimeoutMillis: Number(
+        config.get<string>('DB_CONNECTION_TIMEOUT_MS', '5000'),
+      ),
+    },
   } satisfies TypeOrmModuleOptions;
 
   if (databaseUrl) {
@@ -33,14 +40,30 @@ function getDatabaseConfig(config: ConfigService): TypeOrmModuleOptions {
   }
 
   const sslEnabled = config.get<string>('DB_SSL', 'false') === 'true';
+  const requiredVariables = [
+    'DB_HOST',
+    'DB_PORT',
+    'DB_NAME',
+    'DB_USERNAME',
+    'DB_PASSWORD',
+  ];
+  const missingVariables = requiredVariables.filter(
+    (key) => !config.get<string>(key),
+  );
+
+  if (missingVariables.length > 0) {
+    throw new Error(
+      `Database configuration missing. Set DATABASE_URL or these variables: ${missingVariables.join(', ')}`,
+    );
+  }
 
   return {
     ...baseConfig,
-    host: config.getOrThrow<string>('DB_HOST'),
-    port: Number(config.getOrThrow<string>('DB_PORT')),
-    database: config.getOrThrow<string>('DB_NAME'),
-    username: config.getOrThrow<string>('DB_USERNAME'),
-    password: config.getOrThrow<string>('DB_PASSWORD'),
+    host: config.get<string>('DB_HOST'),
+    port: Number(config.get<string>('DB_PORT')),
+    database: config.get<string>('DB_NAME'),
+    username: config.get<string>('DB_USERNAME'),
+    password: config.get<string>('DB_PASSWORD'),
     ssl: sslConfig(sslEnabled),
   };
 }
