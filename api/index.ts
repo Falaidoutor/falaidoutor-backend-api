@@ -1,23 +1,27 @@
-import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
-import { configureApp } from '../src/app.config';
+import 'reflect-metadata';
 
 type ServerlessRequest = {
   method?: string;
   url?: string;
 };
 type ServerlessResponse = {
-  status: (statusCode: number) => ServerlessResponse;
-  json: (body: unknown) => void;
+  statusCode?: number;
+  setHeader: (name: string, value: string) => void;
+  end: (body?: string) => void;
 };
 type HttpServer = (req: ServerlessRequest, res: ServerlessResponse) => void;
 
 let cachedServer: HttpServer | undefined;
-const logger = new Logger('VercelHandler');
 
 async function bootstrapServer(): Promise<HttpServer> {
   if (!cachedServer) {
+    const [{ NestFactory }, { AppModule }, { configureApp }] =
+      await Promise.all([
+        import('@nestjs/core'),
+        import('../src/app.module.js'),
+        import('../src/app.config.js'),
+      ]);
+
     const app = await NestFactory.create(AppModule);
     configureApp(app);
     await app.init();
@@ -31,6 +35,11 @@ export default async function handler(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ) {
+  if (req.url?.startsWith('/favicon.ico')) {
+    res.statusCode = 204;
+    return res.end();
+  }
+
   try {
     const server = await bootstrapServer();
     return server(req, res);
@@ -39,16 +48,18 @@ export default async function handler(
       error instanceof Error ? error.message : 'Unexpected bootstrap error';
     const stack = error instanceof Error ? error.stack : undefined;
 
-    logger.error(
+    console.error(
       `Failed to bootstrap function for ${req.method ?? 'UNKNOWN'} ${req.url ?? '/'}`,
-      stack,
+      stack ?? message,
     );
 
-    return res.status(500).json({
+    res.statusCode = 500;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify({
       statusCode: 500,
       message,
       path: req.url,
       timestamp: new Date().toISOString(),
-    });
+    }));
   }
 }
