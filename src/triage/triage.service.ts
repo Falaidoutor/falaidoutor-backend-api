@@ -91,7 +91,7 @@ export class TriageService {
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'x-application-key': this.applicationKey,
       },
       body: JSON.stringify({ symptoms }),
@@ -101,7 +101,9 @@ export class TriageService {
       throw new BusinessException(`Erro ao chamar serviço de triagem: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = this.normalizeEncoding(
+      JSON.parse(new TextDecoder('utf-8').decode(await response.arrayBuffer())),
+    );
     this.logger.log(`Resposta triagem: classificacao=${data.classificacao}, nivel=${data.nivel}`);
 
     const triage = this.triageRepository.create({
@@ -111,5 +113,31 @@ export class TriageService {
     });
 
     return { triage, aiData: data };
+  }
+
+  private normalizeEncoding<T>(value: T): T {
+    if (typeof value === 'string') {
+      return this.fixMojibake(value) as T;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.normalizeEncoding(item)) as T;
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, this.normalizeEncoding(item)]),
+      ) as T;
+    }
+
+    return value;
+  }
+
+  private fixMojibake(value: string): string {
+    if (!/(Ã[\x80-\xBF]|Â[°ºª ]|â[€œ€�™€“€”†])/.test(value)) {
+      return value;
+    }
+
+    return Buffer.from(value, 'latin1').toString('utf8');
   }
 }

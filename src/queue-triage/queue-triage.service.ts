@@ -33,7 +33,7 @@ export class QueueTriageService {
       throw new BusinessException('Ficha inválida.');
     }
 
-    if (queueTriage.status.id !== 2) {
+    if (queueTriage.status.id !== 0) {
       throw new BusinessException('Ficha inválida ou já processada.');
     }
 

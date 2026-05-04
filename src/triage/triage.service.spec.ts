@@ -31,6 +31,13 @@ const validDto: TriageRequestDto = {
   symptoms: 'Febre alta e dor de cabeça',
 };
 
+function jsonResponse(data: unknown): Pick<Response, 'ok' | 'arrayBuffer'> {
+  return {
+    ok: true,
+    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(data)).buffer,
+  };
+}
+
 describe('TriageService', () => {
   let service: TriageService;
   let triageRepo: jest.Mocked<Repository<Triage>>;
@@ -97,8 +104,7 @@ describe('TriageService', () => {
 
     it('should call triage API and return response DTO', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        json: async () => mockApiResponse,
+        ...jsonResponse(mockApiResponse),
       } as Response);
       triageRepo.create.mockReturnValue(mockTriageEntity);
 
@@ -131,8 +137,7 @@ describe('TriageService', () => {
     it('should call triage service and process response', async () => {
       queueTriageService.getValidQueueTriage.mockResolvedValue({} as any);
       jest.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        json: async () => mockApiResponse,
+        ...jsonResponse(mockApiResponse),
       } as Response);
       triageRepo.create.mockReturnValue(mockTriageEntity);
       triageRepo.save.mockResolvedValue(mockTriageEntity);
@@ -145,7 +150,7 @@ describe('TriageService', () => {
         expect.objectContaining({
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
             'x-application-key': 'test-application-key',
           },
           body: JSON.stringify({ symptoms: validDto.symptoms }),

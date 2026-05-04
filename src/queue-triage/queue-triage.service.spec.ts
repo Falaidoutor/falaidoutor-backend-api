@@ -14,7 +14,7 @@ const mockTriage = {
   risk: 'ESI-2',
   justification: 'Febre acima de 39°C',
 };
-const mockStatus = { id: 2, statusName: 'Aguardando' };
+const mockStatus = { id: 0, statusName: 'Em Aberto' };
 
 const mockQueueTriage = {
   id: 1,
@@ -63,7 +63,7 @@ describe('QueueTriageService', () => {
       await expect(service.getValidQueueTriage(99, 'Z999')).rejects.toThrow('Ficha inválida.');
     });
 
-    it('should throw BusinessException when status is not 2 (already processed)', async () => {
+    it('should throw BusinessException when status is not 0 (already processed)', async () => {
       const finalized = { ...mockQueueTriage, status: { id: 1, statusName: 'Finalizado' } };
       repo.findOne.mockResolvedValue(finalized as any);
 
