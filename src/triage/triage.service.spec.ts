@@ -62,12 +62,14 @@ describe('TriageService', () => {
             get: jest.fn((key: string) => {
               const config: Record<string, string> = {
                 TRIAGE_SERVICE_URL: 'http://localhost:8000',
+                APPLICATION_KEY: 'test-application-key',
               };
               return config[key];
             }),
             getOrThrow: jest.fn((key: string) => {
               const config: Record<string, string> = {
                 TRIAGE_SERVICE_URL: 'http://localhost:8000',
+                APPLICATION_KEY: 'test-application-key',
               };
               return config[key];
             }),
@@ -142,6 +144,10 @@ describe('TriageService', () => {
         'http://localhost:8000/triage',
         expect.objectContaining({
           method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-application-key': 'test-application-key',
+          },
           body: JSON.stringify({ symptoms: validDto.symptoms }),
         }),
       );

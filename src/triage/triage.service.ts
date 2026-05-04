@@ -12,6 +12,7 @@ import { TriageResponseDto } from './dto/triage-response.dto';
 export class TriageService {
   private readonly logger = new Logger(TriageService.name);
   private readonly triageServiceUrl?: string;
+  private readonly applicationKey?: string;
 
   constructor(
     @InjectRepository(Triage)
@@ -23,6 +24,7 @@ export class TriageService {
       .get<string>('TRIAGE_SERVICE_URL')
       ?.trim()
       .replace(/\/$/, '');
+    this.applicationKey = this.configService.get<string>('APPLICATION_KEY')?.trim();
   }
 
   async createTriage(dto: TriageRequestDto): Promise<TriageResponseDto> {
@@ -80,11 +82,18 @@ export class TriageService {
       throw new BusinessException('Serviço de triagem indisponível.');
     }
 
+    if (!this.applicationKey) {
+      throw new BusinessException('Chave de aplicação não configurada.');
+    }
+
     this.logger.log(`Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`);
 
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-application-key': this.applicationKey,
+      },
       body: JSON.stringify({ symptoms }),
     });
 
