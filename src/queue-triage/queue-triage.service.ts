@@ -3,8 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
+import { Triage } from '../shared/entities/triage.entity';
 import { FinalizedTriageDto } from './dto/finalized-triage.dto';
 import { TriageListDto } from './dto/triage-list.dto';
+import { UpdateFinalizedTriageDto } from './dto/update-finalized-triage.dto';
 import { RISK_PRIORITY, RiskLevel } from '../shared/constants/ai-system-prompt';
 
 interface FinalizedTriageRow {
@@ -21,9 +23,14 @@ export class QueueTriageService {
   constructor(
     @InjectRepository(QueueTriage)
     private readonly queueTriageRepository: Repository<QueueTriage>,
+    @InjectRepository(Triage)
+    private readonly triageRepository: Repository<Triage>,
   ) {}
 
-  async getValidQueueTriage(queueId: number, queueTicket: string): Promise<QueueTriage> {
+  async getValidQueueTriage(
+    queueId: number,
+    queueTicket: string,
+  ): Promise<QueueTriage> {
     const queueTriage = await this.queueTriageRepository.findOne({
       where: { id: queueId, queueTicket },
       relations: ['patient', 'status', 'triage'],
@@ -40,7 +47,10 @@ export class QueueTriageService {
     return queueTriage;
   }
 
-  async linkTriageAndUpdateStatus(queueId: number, triageId: number): Promise<void> {
+  async linkTriageAndUpdateStatus(
+    queueId: number,
+    triageId: number,
+  ): Promise<void> {
     await this.queueTriageRepository.query(
       `UPDATE falaidoutor.queue_triage SET triage_id = $1, status_id = 1 WHERE id = $2`,
       [triageId, queueId],
@@ -61,6 +71,7 @@ export class QueueTriageService {
       LEFT JOIN falaidoutor.triage t ON qt.triage_id = t.id
       LEFT JOIN falaidoutor.status_queue s ON qt.status_id = s.id
       WHERE qt.status_id = 1
+        AND t.status = 'A'
       ORDER BY
         CASE t.risk
           WHEN 'ESI-1' THEN 1
@@ -80,7 +91,9 @@ export class QueueTriageService {
       age: Number(row.age),
       queueTicket: row.queue_ticket,
       classificacao: row.risk,
-      prioridade: RISK_PRIORITY[row.risk as RiskLevel] ? String(RISK_PRIORITY[row.risk as RiskLevel]) : '',
+      prioridade: RISK_PRIORITY[row.risk as RiskLevel]
+        ? String(RISK_PRIORITY[row.risk as RiskLevel])
+        : '',
     }));
   }
 
@@ -90,7 +103,7 @@ export class QueueTriageService {
       relations: ['patient', 'triage', 'status'],
     });
 
-    if (!queueTriage) {
+    if (!queueTriage?.triage || queueTriage.triage.status !== 'A') {
       throw new NotFoundException(`Triagem com ID ${id} não encontrada.`);
     }
 
@@ -130,11 +143,56 @@ export class QueueTriageService {
     };
   }
 
+  async updateQueueTriage(
+    id: number,
+    dto: UpdateFinalizedTriageDto,
+  ): Promise<FinalizedTriageDto> {
+    const queueTriage = await this.getExistingQueueTriageWithTriage(id);
+    const triage = queueTriage.triage;
+
+    if (dto.symptoms !== undefined) {
+      triage.symptoms = dto.symptoms;
+    }
+
+    if (dto.classificacao !== undefined) {
+      triage.risk = dto.classificacao;
+    }
+
+    if (dto.justificativa !== undefined) {
+      triage.justification = dto.justificativa;
+    }
+
+    await this.triageRepository.save(triage);
+
+    return this.getQueueTriageById(id);
+  }
+
+  async removeQueueTriage(id: number): Promise<void> {
+    const queueTriage = await this.getExistingQueueTriageWithTriage(id);
+
+    await this.triageRepository.update(queueTriage.triage.id, { status: 'I' });
+  }
+
   sortByRiskPriority(triages: TriageListDto[]): TriageListDto[] {
     return triages.sort((a, b) => {
       const prioA = RISK_PRIORITY[a.classificacao as RiskLevel] ?? 6;
       const prioB = RISK_PRIORITY[b.classificacao as RiskLevel] ?? 6;
       return prioA - prioB || a.queueTicket.localeCompare(b.queueTicket);
     });
+  }
+
+  private async getExistingQueueTriageWithTriage(
+    id: number,
+  ): Promise<QueueTriage & { triage: Triage }> {
+    const queueTriage = await this.queueTriageRepository.findOne({
+      where: { id },
+      relations: ['patient', 'triage', 'status'],
+    });
+
+    if (!queueTriage?.triage || queueTriage.triage.status !== 'A') {
+      throw new NotFoundException(`Triagem com ID ${id} nÃ£o encontrada.`);
+    }
+
+    return queueTriage as QueueTriage & { triage: Triage };
   }
 }

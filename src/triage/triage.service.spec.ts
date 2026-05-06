@@ -12,6 +12,7 @@ const mockTriageEntity: Triage = {
   id: 1,
   symptoms: 'Febre alta e dor de cabeça',
   risk: 'ESI-2',
+  status: 'A',
   justification: 'Sintomas sugestivos de condição grave',
 };
 
@@ -34,7 +35,8 @@ const validDto: TriageRequestDto = {
 function jsonResponse(data: unknown): Pick<Response, 'ok' | 'arrayBuffer'> {
   return {
     ok: true,
-    arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(data)).buffer,
+    arrayBuffer: async () =>
+      new TextEncoder().encode(JSON.stringify(data)).buffer,
   };
 }
 
@@ -92,14 +94,18 @@ describe('TriageService', () => {
 
   describe('createTriageMock', () => {
     it('should throw BusinessException when symptoms is empty', async () => {
-      await expect(service.createTriageMock('')).rejects.toThrow(BusinessException);
+      await expect(service.createTriageMock('')).rejects.toThrow(
+        BusinessException,
+      );
       await expect(service.createTriageMock('')).rejects.toThrow(
         'Lista de sintomas não pode ser vazia.',
       );
     });
 
     it('should throw BusinessException when symptoms is whitespace only', async () => {
-      await expect(service.createTriageMock('   ')).rejects.toThrow(BusinessException);
+      await expect(service.createTriageMock('   ')).rejects.toThrow(
+        BusinessException,
+      );
     });
 
     it('should call triage API and return response DTO', async () => {
@@ -114,9 +120,14 @@ describe('TriageService', () => {
       expect(result.nivel).toBe(2);
       expect(result.nome_nivel).toBe('Emergente');
       expect(result.ponto_decisao_ativado).toBe('B');
-      expect(result.criterios_ponto_decisao).toEqual(['Febre alta', 'Dor de cabeça intensa']);
+      expect(result.criterios_ponto_decisao).toEqual([
+        'Febre alta',
+        'Dor de cabeça intensa',
+      ]);
       expect(result.recursos_estimados).toBe(3);
-      expect(result.justificativa).toBe('Sintomas sugestivos de condição grave');
+      expect(result.justificativa).toBe(
+        'Sintomas sugestivos de condição grave',
+      );
     });
   });
 
@@ -124,14 +135,20 @@ describe('TriageService', () => {
     it('should throw BusinessException when symptoms is empty', async () => {
       const dto: TriageRequestDto = { ...validDto, symptoms: '' };
 
-      await expect(service.createTriage(dto)).rejects.toThrow(BusinessException);
+      await expect(service.createTriage(dto)).rejects.toThrow(
+        BusinessException,
+      );
     });
 
     it('should throw BusinessException when queueId is not a number', async () => {
       const dto: TriageRequestDto = { ...validDto, queueId: 'xyz' };
 
-      await expect(service.createTriage(dto)).rejects.toThrow(BusinessException);
-      await expect(service.createTriage(dto)).rejects.toThrow('ID da fila inválido.');
+      await expect(service.createTriage(dto)).rejects.toThrow(
+        BusinessException,
+      );
+      await expect(service.createTriage(dto)).rejects.toThrow(
+        'ID da fila inválido.',
+      );
     });
 
     it('should call triage service and process response', async () => {
@@ -179,7 +196,9 @@ describe('TriageService', () => {
         statusText: 'Internal Server Error',
       } as Response);
 
-      await expect(service.createTriage(validDto)).rejects.toThrow(BusinessException);
+      await expect(service.createTriage(validDto)).rejects.toThrow(
+        BusinessException,
+      );
       await expect(service.createTriage(validDto)).rejects.toThrow(
         'Erro ao chamar serviço de triagem',
       );

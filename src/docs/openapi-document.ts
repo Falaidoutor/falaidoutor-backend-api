@@ -65,7 +65,11 @@ export const openApiDocument = {
         required: ['authenticated', 'patientName', 'queueTriageId', 'statusId'],
         properties: {
           authenticated: { type: 'boolean', example: true },
-          patientName: { type: 'string', nullable: true, example: 'Maria Silva' },
+          patientName: {
+            type: 'string',
+            nullable: true,
+            example: 'Maria Silva',
+          },
           queueTriageId: { type: 'integer', nullable: true, example: 42 },
           statusId: { type: 'integer', nullable: true, example: 0 },
         },
@@ -232,6 +236,21 @@ export const openApiDocument = {
           },
           createdAtDate: { type: 'string', example: '06/05/2026' },
           createdAtTime: { type: 'string', example: '14:30:00' },
+        },
+      },
+      UpdateFinalizedTriageRequest: {
+        type: 'object',
+        properties: {
+          symptoms: { type: 'string', example: 'Dor no peito intensa.' },
+          classificacao: {
+            type: 'string',
+            enum: ['ESI-1', 'ESI-2', 'ESI-3', 'ESI-4', 'ESI-5'],
+            example: 'ESI-2',
+          },
+          justificativa: {
+            type: 'string',
+            example: 'Paciente apresenta sinais de alto risco.',
+          },
         },
       },
     },
@@ -487,6 +506,65 @@ export const openApiDocument = {
               },
             },
           },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      put: {
+        tags: ['Triages'],
+        summary: 'Atualiza uma triagem existente.',
+        security: [{ applicationKey: [] }],
+        parameters: [
+          {
+            name: 'queueId',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+            example: 42,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/UpdateFinalizedTriageRequest',
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Triagem atualizada.',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/FinalizedTriage' },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
+        },
+      },
+      delete: {
+        tags: ['Triages'],
+        summary: 'Inativa uma triagem existente.',
+        description:
+          "Atualiza o campo status da triagem para 'I', mantendo o registro no banco de dados.",
+        security: [{ applicationKey: [] }],
+        parameters: [
+          {
+            name: 'queueId',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+            example: 42,
+          },
+        ],
+        responses: {
+          '204': { description: 'Triagem inativada.' },
           '400': { $ref: '#/components/responses/BadRequest' },
           '401': { $ref: '#/components/responses/Unauthorized' },
           '404': { $ref: '#/components/responses/NotFound' },

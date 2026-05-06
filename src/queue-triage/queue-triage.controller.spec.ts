@@ -5,7 +5,15 @@ import { QueueTriageController } from './queue-triage.controller';
 import { QueueTriageService } from './queue-triage.service';
 
 const mockList: TriageListDto[] = [
-  { queueId: 1, name: 'João', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'ESI-2', prioridade: '2' },
+  {
+    queueId: 1,
+    name: 'João',
+    gender: 'M',
+    age: 30,
+    queueTicket: 'A001',
+    classificacao: 'ESI-2',
+    prioridade: '2',
+  },
 ];
 
 const mockDetail: FinalizedTriageDto = {
@@ -39,6 +47,8 @@ describe('QueueTriageController', () => {
           useValue: {
             getFinalizedTriages: jest.fn(),
             getQueueTriageById: jest.fn(),
+            updateQueueTriage: jest.fn(),
+            removeQueueTriage: jest.fn(),
           },
         },
       ],
@@ -75,6 +85,32 @@ describe('QueueTriageController', () => {
 
       expect(result).toBe(mockDetail);
       expect(service.getQueueTriageById).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('update', () => {
+    it('should update triage details by id', async () => {
+      const dto = {
+        symptoms: 'Febre e dor',
+        classificacao: 'ESI-3',
+        justificativa: 'Quadro estavel',
+      };
+      service.updateQueueTriage.mockResolvedValue(mockDetail);
+
+      const result = await controller.update(1, dto);
+
+      expect(result).toBe(mockDetail);
+      expect(service.updateQueueTriage).toHaveBeenCalledWith(1, dto);
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove triage by id', async () => {
+      service.removeQueueTriage.mockResolvedValue(undefined);
+
+      await controller.remove(1);
+
+      expect(service.removeQueueTriage).toHaveBeenCalledWith(1);
     });
   });
 });

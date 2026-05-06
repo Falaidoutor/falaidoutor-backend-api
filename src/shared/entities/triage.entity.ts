@@ -13,4 +13,7 @@ export class Triage {
 
   @Column({ nullable: false, type: 'text' })
   justification: string;
+
+  @Column({ nullable: false, default: 'A' })
+  status: string;
 }

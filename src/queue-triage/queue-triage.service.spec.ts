@@ -4,14 +4,22 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
+import { Triage } from '../shared/entities/triage.entity';
 import { QueueTriageService } from './queue-triage.service';
 import { TriageListDto } from './dto/triage-list.dto';
 
-const mockPatient = { id: 1, name: 'João Silva', cpf: '12345678901', age: 30, gender: 'M' };
+const mockPatient = {
+  id: 1,
+  name: 'João Silva',
+  cpf: '12345678901',
+  age: 30,
+  gender: 'M',
+};
 const mockTriage = {
   id: 1,
   symptoms: 'Febre alta',
   risk: 'ESI-2',
+  status: 'A',
   justification: 'Febre acima de 39°C',
 };
 const mockStatus = { id: 0, statusName: 'Em Aberto' };
@@ -28,6 +36,7 @@ const mockQueueTriage = {
 describe('QueueTriageService', () => {
   let service: QueueTriageService;
   let repo: jest.Mocked<Repository<QueueTriage>>;
+  let triageRepo: jest.Mocked<Repository<Triage>>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -40,11 +49,19 @@ describe('QueueTriageService', () => {
             query: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Triage),
+          useValue: {
+            save: jest.fn(),
+            update: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(QueueTriageService);
     repo = module.get(getRepositoryToken(QueueTriage));
+    triageRepo = module.get(getRepositoryToken(Triage));
   });
 
   describe('getValidQueueTriage', () => {
@@ -59,15 +76,24 @@ describe('QueueTriageService', () => {
     it('should throw BusinessException when queue triage not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.getValidQueueTriage(99, 'Z999')).rejects.toThrow(BusinessException);
-      await expect(service.getValidQueueTriage(99, 'Z999')).rejects.toThrow('Ficha inválida.');
+      await expect(service.getValidQueueTriage(99, 'Z999')).rejects.toThrow(
+        BusinessException,
+      );
+      await expect(service.getValidQueueTriage(99, 'Z999')).rejects.toThrow(
+        'Ficha inválida.',
+      );
     });
 
     it('should throw BusinessException when status is not 0 (already processed)', async () => {
-      const finalized = { ...mockQueueTriage, status: { id: 1, statusName: 'Finalizado' } };
+      const finalized = {
+        ...mockQueueTriage,
+        status: { id: 1, statusName: 'Finalizado' },
+      };
       repo.findOne.mockResolvedValue(finalized as any);
 
-      await expect(service.getValidQueueTriage(1, 'A001')).rejects.toThrow(BusinessException);
+      await expect(service.getValidQueueTriage(1, 'A001')).rejects.toThrow(
+        BusinessException,
+      );
       await expect(service.getValidQueueTriage(1, 'A001')).rejects.toThrow(
         'Ficha inválida ou já processada.',
       );
@@ -115,7 +141,15 @@ describe('QueueTriageService', () => {
       const result = await service.getFinalizedTriages();
 
       expect(result).toEqual([
-        { queueId: 1, name: 'João Silva', gender: 'M', age: 30, queueTicket: 'A001', classificacao: 'ESI-2', prioridade: '2' },
+        {
+          queueId: 1,
+          name: 'João Silva',
+          gender: 'M',
+          age: 30,
+          queueTicket: 'A001',
+          classificacao: 'ESI-2',
+          prioridade: '2',
+        },
       ]);
     });
 
@@ -130,7 +164,11 @@ describe('QueueTriageService', () => {
 
   describe('getQueueTriageById', () => {
     it('should return finalized triage dto', async () => {
-      const withTriage = { ...mockQueueTriage, triage: mockTriage, status: { id: 1, statusName: 'Finalizado' } };
+      const withTriage = {
+        ...mockQueueTriage,
+        triage: mockTriage,
+        status: { id: 1, statusName: 'Finalizado' },
+      };
       repo.findOne.mockResolvedValue(withTriage as any);
 
       const result = await service.getQueueTriageById(1);
@@ -146,30 +184,139 @@ describe('QueueTriageService', () => {
       expect(result.createdAtTime).toBeDefined();
     });
 
-    it('should return empty strings for missing triage fields', async () => {
+    it('should throw NotFoundException when triage is missing', async () => {
       repo.findOne.mockResolvedValue(mockQueueTriage as any);
 
-      const result = await service.getQueueTriageById(1);
+      await expect(service.getQueueTriageById(1)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
 
-      expect(result.symptoms).toBe('');
-      expect(result.classificacao).toBe('');
-      expect(result.justificativa).toBe('');
+    it('should throw NotFoundException when triage is inactive', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockQueueTriage,
+        triage: { ...mockTriage, status: 'I' },
+      } as any);
+
+      await expect(service.getQueueTriageById(1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.getQueueTriageById(99)).rejects.toThrow(NotFoundException);
-      await expect(service.getQueueTriageById(99)).rejects.toThrow('Triagem com ID 99 não encontrada.');
+      await expect(service.getQueueTriageById(99)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.getQueueTriageById(99)).rejects.toThrow(
+        'Triagem com ID 99 não encontrada.',
+      );
+    });
+  });
+
+  describe('updateQueueTriage', () => {
+    it('should update linked triage and return refreshed details', async () => {
+      const withTriage = {
+        ...mockQueueTriage,
+        triage: { ...mockTriage },
+        status: { id: 1, statusName: 'Finalizado' },
+      };
+      repo.findOne.mockResolvedValue(withTriage as any);
+      triageRepo.save.mockResolvedValue(withTriage.triage as any);
+
+      const result = await service.updateQueueTriage(1, {
+        symptoms: 'Tosse persistente',
+        classificacao: 'ESI-3',
+        justificativa: 'Sem sinais de alto risco',
+      });
+
+      expect(triageRepo.save).toHaveBeenCalledWith({
+        id: 1,
+        symptoms: 'Tosse persistente',
+        risk: 'ESI-3',
+        justification: 'Sem sinais de alto risco',
+        status: 'A',
+      });
+      expect(result.queueId).toBe(1);
+    });
+
+    it('should throw NotFoundException when triage is not linked', async () => {
+      repo.findOne.mockResolvedValue(mockQueueTriage as any);
+
+      await expect(
+        service.updateQueueTriage(1, { symptoms: 'Dor' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(triageRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('removeQueueTriage', () => {
+    it('should mark triage as inactive', async () => {
+      const withTriage = {
+        ...mockQueueTriage,
+        triage: mockTriage,
+        status: { id: 1, statusName: 'Finalizado' },
+      };
+      repo.findOne.mockResolvedValue(withTriage as any);
+
+      await service.removeQueueTriage(1);
+
+      expect(triageRepo.update).toHaveBeenCalledWith(1, { status: 'I' });
+    });
+
+    it('should throw NotFoundException when queue triage has no triage', async () => {
+      repo.findOne.mockResolvedValue(mockQueueTriage as any);
+
+      await expect(service.removeQueueTriage(1)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(triageRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when triage is already inactive', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockQueueTriage,
+        triage: { ...mockTriage, status: 'I' },
+      } as any);
+
+      await expect(service.removeQueueTriage(1)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(triageRepo.update).not.toHaveBeenCalled();
     });
   });
 
   describe('sortByRiskPriority', () => {
     it('should sort triages by risk priority', () => {
       const triages: TriageListDto[] = [
-        { queueId: 3, name: 'C', gender: 'M', age: 20, queueTicket: 'C001', classificacao: 'ESI-4', prioridade: '4' },
-        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'ESI-1', prioridade: '1' },
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-3', prioridade: '3' },
+        {
+          queueId: 3,
+          name: 'C',
+          gender: 'M',
+          age: 20,
+          queueTicket: 'C001',
+          classificacao: 'ESI-4',
+          prioridade: '4',
+        },
+        {
+          queueId: 1,
+          name: 'A',
+          gender: 'F',
+          age: 30,
+          queueTicket: 'A001',
+          classificacao: 'ESI-1',
+          prioridade: '1',
+        },
+        {
+          queueId: 2,
+          name: 'B',
+          gender: 'M',
+          age: 25,
+          queueTicket: 'B001',
+          classificacao: 'ESI-3',
+          prioridade: '3',
+        },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
@@ -181,8 +328,24 @@ describe('QueueTriageService', () => {
 
     it('should sort by queueTicket when risk is the same', () => {
       const triages: TriageListDto[] = [
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-3', prioridade: '3' },
-        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'ESI-3', prioridade: '3' },
+        {
+          queueId: 2,
+          name: 'B',
+          gender: 'M',
+          age: 25,
+          queueTicket: 'B001',
+          classificacao: 'ESI-3',
+          prioridade: '3',
+        },
+        {
+          queueId: 1,
+          name: 'A',
+          gender: 'F',
+          age: 30,
+          queueTicket: 'A001',
+          classificacao: 'ESI-3',
+          prioridade: '3',
+        },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
@@ -193,8 +356,24 @@ describe('QueueTriageService', () => {
 
     it('should assign priority 6 to unknown risk levels', () => {
       const triages: TriageListDto[] = [
-        { queueId: 1, name: 'A', gender: 'F', age: 30, queueTicket: 'A001', classificacao: 'Desconhecido', prioridade: '?' },
-        { queueId: 2, name: 'B', gender: 'M', age: 25, queueTicket: 'B001', classificacao: 'ESI-1', prioridade: '1' },
+        {
+          queueId: 1,
+          name: 'A',
+          gender: 'F',
+          age: 30,
+          queueTicket: 'A001',
+          classificacao: 'Desconhecido',
+          prioridade: '?',
+        },
+        {
+          queueId: 2,
+          name: 'B',
+          gender: 'M',
+          age: 25,
+          queueTicket: 'B001',
+          classificacao: 'ESI-1',
+          prioridade: '1',
+        },
       ];
 
       const sorted = service.sortByRiskPriority(triages);
