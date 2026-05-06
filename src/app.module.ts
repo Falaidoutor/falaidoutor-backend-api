@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { DatabaseModule } from './database/database.module';
+import { DocsController } from './docs/docs.controller';
 import { PatientModule } from './patient/patient.module';
 import { QueueTriageModule } from './queue-triage/queue-triage.module';
 import { ApplicationKeyMiddleware } from './shared/middleware/application-key.middleware';
@@ -16,6 +17,7 @@ import { TriageModule } from './triage/triage.module';
     QueueTriageModule,
     TriageModule,
   ],
+  controllers: [DocsController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

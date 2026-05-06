@@ -7,6 +7,10 @@ export class ApplicationKeyMiddleware implements NestMiddleware {
   constructor(private readonly configService: ConfigService) {}
 
   use(req: Request, _res: Response, next: NextFunction): void {
+    if (this.isPublicDocumentationRoute(req)) {
+      return next();
+    }
+
     const expectedKey = this.configService.get<string>('APPLICATION_KEY')?.trim();
     const headerValue = req.headers['x-application-key'];
     const applicationKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
@@ -20,5 +24,10 @@ export class ApplicationKeyMiddleware implements NestMiddleware {
     }
 
     next();
+  }
+
+  private isPublicDocumentationRoute(req: Request): boolean {
+    const path = req.path ?? req.url;
+    return path === '/api/docs' || path === '/api/docs-json';
   }
 }
