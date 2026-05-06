@@ -37,8 +37,14 @@ describe('QueueTriageService', () => {
   let service: QueueTriageService;
   let repo: jest.Mocked<Repository<QueueTriage>>;
   let triageRepo: jest.Mocked<Repository<Triage>>;
+  let manager: { query: jest.Mock; update: jest.Mock };
 
   beforeEach(async () => {
+    manager = {
+      query: jest.fn(),
+      update: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QueueTriageService,
@@ -47,6 +53,9 @@ describe('QueueTriageService', () => {
           useValue: {
             findOne: jest.fn(),
             query: jest.fn(),
+            manager: {
+              transaction: jest.fn(async (callback) => callback(manager)),
+            },
           },
         },
         {
@@ -252,7 +261,7 @@ describe('QueueTriageService', () => {
   });
 
   describe('removeQueueTriage', () => {
-    it('should mark triage as inactive', async () => {
+    it('should mark triage as inactive, unlink queue triage and reset status', async () => {
       const withTriage = {
         ...mockQueueTriage,
         triage: mockTriage,
@@ -262,7 +271,12 @@ describe('QueueTriageService', () => {
 
       await service.removeQueueTriage(1);
 
-      expect(triageRepo.update).toHaveBeenCalledWith(1, { status: 'I' });
+      expect(repo.manager.transaction).toHaveBeenCalled();
+      expect(manager.update).toHaveBeenCalledWith(Triage, 1, { status: 'I' });
+      expect(manager.query).toHaveBeenCalledWith(
+        'UPDATE falaidoutor.queue_triage SET triage_id = NULL, status_id = 0 WHERE id = $1',
+        [1],
+      );
     });
 
     it('should throw NotFoundException when queue triage has no triage', async () => {
@@ -271,7 +285,7 @@ describe('QueueTriageService', () => {
       await expect(service.removeQueueTriage(1)).rejects.toThrow(
         NotFoundException,
       );
-      expect(triageRepo.update).not.toHaveBeenCalled();
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when triage is already inactive', async () => {
@@ -283,7 +297,7 @@ describe('QueueTriageService', () => {
       await expect(service.removeQueueTriage(1)).rejects.toThrow(
         NotFoundException,
       );
-      expect(triageRepo.update).not.toHaveBeenCalled();
+      expect(repo.manager.transaction).not.toHaveBeenCalled();
     });
   });
 

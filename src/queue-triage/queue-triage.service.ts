@@ -169,8 +169,15 @@ export class QueueTriageService {
 
   async removeQueueTriage(id: number): Promise<void> {
     const queueTriage = await this.getExistingQueueTriageWithTriage(id);
+    const triageId = queueTriage.triage.id;
 
-    await this.triageRepository.update(queueTriage.triage.id, { status: 'I' });
+    await this.queueTriageRepository.manager.transaction(async (manager) => {
+      await manager.update(Triage, triageId, { status: 'I' });
+      await manager.query(
+        `UPDATE falaidoutor.queue_triage SET triage_id = NULL, status_id = 0 WHERE id = $1`,
+        [id],
+      );
+    });
   }
 
   sortByRiskPriority(triages: TriageListDto[]): TriageListDto[] {

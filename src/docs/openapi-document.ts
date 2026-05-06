@@ -552,7 +552,7 @@ export const openApiDocument = {
         tags: ['Triages'],
         summary: 'Inativa uma triagem existente.',
         description:
-          "Atualiza o campo status da triagem para 'I', mantendo o registro no banco de dados.",
+          "Atualiza o campo status da triagem para 'I', desvincula a ficha de fila e retorna a ficha ao status pendente.",
         security: [{ applicationKey: [] }],
         parameters: [
           {
