@@ -28,6 +28,6 @@ export class ApplicationKeyMiddleware implements NestMiddleware {
 
   private isPublicDocumentationRoute(req: Request): boolean {
     const path = req.path ?? req.url;
-    return path === '/api/docs' || path === '/api/docs-json';
+    return ['/docs', '/docs-json', '/api/docs', '/api/docs-json'].includes(path);
   }
 }

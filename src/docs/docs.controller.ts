@@ -29,7 +29,7 @@ export class DocsController {
     <script>
       window.onload = function () {
         window.ui = SwaggerUIBundle({
-          url: '/api/docs-json',
+          url: './docs-json',
           dom_id: '#swagger-ui',
           deepLinking: true,
           persistAuthorization: true,
