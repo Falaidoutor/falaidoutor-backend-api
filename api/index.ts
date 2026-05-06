@@ -13,6 +13,18 @@ type HttpServer = (req: ServerlessRequest, res: ServerlessResponse) => void;
 
 let cachedServer: HttpServer | undefined;
 
+function getPath(url = '/'): string {
+  return url.split('?')[0] || '/';
+}
+
+function isDocsPath(path: string): boolean {
+  return path === '/api/docs' || path === '/docs';
+}
+
+function isDocsJsonPath(path: string): boolean {
+  return path === '/api/docs-json' || path === '/docs-json';
+}
+
 async function bootstrapServer(): Promise<HttpServer> {
   if (!cachedServer) {
     const [{ NestFactory }, { AppModule }, { configureApp }] =
@@ -35,12 +47,30 @@ export default async function handler(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ) {
+  const path = getPath(req.url);
+
   if (req.url?.startsWith('/favicon.ico') || req.url?.startsWith('/favicon.png')) {
     res.statusCode = 204;
     return res.end();
   }
 
-  if (req.url === '/' || req.url?.startsWith('/api/health')) {
+  if (isDocsPath(path)) {
+    const { getSwaggerUiHtml } = await import('../src/docs/swagger-ui-html.js');
+
+    res.statusCode = 200;
+    res.setHeader('content-type', 'text/html; charset=utf-8');
+    return res.end(getSwaggerUiHtml());
+  }
+
+  if (isDocsJsonPath(path)) {
+    const { openApiDocument } = await import('../src/docs/openapi-document.js');
+
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json; charset=utf-8');
+    return res.end(JSON.stringify(openApiDocument));
+  }
+
+  if (path === '/' || path === '/api/health' || path === '/health') {
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json; charset=utf-8');
     return res.end(JSON.stringify({
