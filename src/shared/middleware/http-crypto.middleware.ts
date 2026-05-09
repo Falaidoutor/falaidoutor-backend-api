@@ -9,6 +9,7 @@ import { HttpCryptoService } from '../crypto/http-crypto.service';
 
 export type CryptoRequest = Request & {
   httpPayloadEncrypted?: boolean;
+  httpCryptoResponseKey?: Buffer;
 };
 
 @Injectable()
@@ -28,28 +29,33 @@ export class HttpCryptoMiddleware implements NestMiddleware {
     const bodyWasEncrypted = this.decryptBody(req);
     const queryWasEncrypted = this.decryptQuery(req);
 
-    req.httpPayloadEncrypted =
-      encryptedHeader || bodyWasEncrypted || queryWasEncrypted;
+    req.httpPayloadEncrypted = bodyWasEncrypted || queryWasEncrypted;
 
-    if (this.encryptionIsRequired() && !req.httpPayloadEncrypted) {
+    if (
+      (encryptedHeader || this.encryptionIsRequired()) &&
+      !req.httpPayloadEncrypted
+    ) {
       throw new BadRequestException('Encrypted HTTP payload is required.');
     }
 
     next();
   }
 
-  private decryptBody(req: Request): boolean {
+  private decryptBody(req: CryptoRequest): boolean {
     if (!this.httpCryptoService.isEncryptedPayload(req.body)) {
       return false;
     }
 
-    req.body = this.httpCryptoService.decrypt<Record<string, unknown>>(
-      req.body,
-    );
+    const decryptedPayload = this.httpCryptoService.decryptIncoming<
+      Record<string, unknown>
+    >(req.body);
+    req.body = decryptedPayload.value;
+    this.attachResponseKey(req, decryptedPayload.responseKey);
+
     return true;
   }
 
-  private decryptQuery(req: Request): boolean {
+  private decryptQuery(req: CryptoRequest): boolean {
     const payload = req.query?.payload;
     const encryptedQuery = Array.isArray(payload) ? payload[0] : payload;
 
@@ -69,8 +75,9 @@ export class HttpCryptoMiddleware implements NestMiddleware {
       throw new BadRequestException('Invalid encrypted query payload.');
     }
 
-    const decryptedQuery =
-      this.httpCryptoService.decrypt<Record<string, unknown>>(parsed);
+    const decryptedPayload =
+      this.httpCryptoService.decryptIncoming<Record<string, unknown>>(parsed);
+    const decryptedQuery = decryptedPayload.value;
 
     if (
       !decryptedQuery ||
@@ -81,7 +88,15 @@ export class HttpCryptoMiddleware implements NestMiddleware {
     }
 
     (req as Request & { query: any }).query = decryptedQuery;
+    this.attachResponseKey(req, decryptedPayload.responseKey);
+
     return true;
+  }
+
+  private attachResponseKey(req: CryptoRequest, responseKey?: Buffer): void {
+    if (responseKey) {
+      req.httpCryptoResponseKey = responseKey;
+    }
   }
 
   private getHeader(req: Request, name: string): string | undefined {

@@ -25,7 +25,12 @@ export class HttpCryptoInterceptor implements NestInterceptor {
           return data;
         }
 
-        return this.httpCryptoService.encrypt(data);
+        return request.httpCryptoResponseKey
+          ? this.httpCryptoService.encryptWithSessionKey(
+              data,
+              request.httpCryptoResponseKey,
+            )
+          : this.httpCryptoService.encrypt(data);
       }),
     );
   }

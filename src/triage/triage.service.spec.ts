@@ -74,6 +74,7 @@ describe('TriageService', () => {
               const config: Record<string, string> = {
                 TRIAGE_SERVICE_URL: 'http://localhost:8000',
                 APPLICATION_KEY: 'test-application-key',
+                HTTP_CRYPTO_SECRET: 'test-http-crypto-secret',
               };
               return config[key];
             }),

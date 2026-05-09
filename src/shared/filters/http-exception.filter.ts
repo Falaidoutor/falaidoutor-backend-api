@@ -50,7 +50,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       .status(status)
       .json(
         request.httpPayloadEncrypted && this.httpCryptoService
-          ? this.httpCryptoService.encrypt(payload)
+          ? request.httpCryptoResponseKey
+            ? this.httpCryptoService.encryptWithSessionKey(
+                payload,
+                request.httpCryptoResponseKey,
+              )
+            : this.httpCryptoService.encrypt(payload)
           : payload,
       );
   }
