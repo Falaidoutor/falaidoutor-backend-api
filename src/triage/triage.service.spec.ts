@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
 import { Triage } from '../shared/entities/triage.entity';
 import { QueueTriageService } from '../queue-triage/queue-triage.service';
+import { HttpCryptoService } from '../shared/crypto/http-crypto.service';
 import { TriageService } from './triage.service';
 import { TriageRequestDto } from './dto/triage-request.dto';
 
@@ -44,6 +45,7 @@ describe('TriageService', () => {
   let service: TriageService;
   let triageRepo: jest.Mocked<Repository<Triage>>;
   let queueTriageService: jest.Mocked<QueueTriageService>;
+  let httpCryptoService: HttpCryptoService;
 
   beforeEach(async () => {
     jest.restoreAllMocks();
@@ -84,12 +86,14 @@ describe('TriageService', () => {
             }),
           },
         },
+        HttpCryptoService,
       ],
     }).compile();
 
     service = module.get(TriageService);
     triageRepo = module.get(getRepositoryToken(Triage));
     queueTriageService = module.get(QueueTriageService);
+    httpCryptoService = module.get(HttpCryptoService);
   });
 
   describe('createTriageMock', () => {
@@ -169,10 +173,16 @@ describe('TriageService', () => {
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
             'x-application-key': 'test-application-key',
+            'x-payload-encrypted': 'true',
           },
-          body: JSON.stringify({ symptoms: validDto.symptoms }),
+          body: expect.any(String),
         }),
       );
+      const [, requestInit] = (global.fetch as jest.Mock).mock.calls[0];
+      const encryptedBody = JSON.parse(requestInit.body);
+      expect(httpCryptoService.decrypt(encryptedBody)).toEqual({
+        symptoms: validDto.symptoms,
+      });
       expect(triageRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           risk: 'ESI-2',

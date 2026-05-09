@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
 import { Triage } from '../shared/entities/triage.entity';
 import { QueueTriageService } from '../queue-triage/queue-triage.service';
+import { HttpCryptoService } from '../shared/crypto/http-crypto.service';
 import { TriageRequestDto } from './dto/triage-request.dto';
 import { TriageResponseDto } from './dto/triage-response.dto';
 
@@ -19,12 +20,15 @@ export class TriageService {
     private readonly triageRepository: Repository<Triage>,
     private readonly queueTriageService: QueueTriageService,
     private readonly configService: ConfigService,
+    private readonly httpCryptoService: HttpCryptoService,
   ) {
     this.triageServiceUrl = this.configService
       .get<string>('TRIAGE_SERVICE_URL')
       ?.trim()
       .replace(/\/$/, '');
-    this.applicationKey = this.configService.get<string>('APPLICATION_KEY')?.trim();
+    this.applicationKey = this.configService
+      .get<string>('APPLICATION_KEY')
+      ?.trim();
   }
 
   async createTriage(dto: TriageRequestDto): Promise<TriageResponseDto> {
@@ -44,9 +48,17 @@ export class TriageService {
     const { triage, aiData } = await this.processAiTriage(symptoms);
     const savedTriage = await this.triageRepository.save(triage);
 
-    await this.queueTriageService.linkTriageAndUpdateStatus(queueIdNum, savedTriage.id);
+    await this.queueTriageService.linkTriageAndUpdateStatus(
+      queueIdNum,
+      savedTriage.id,
+    );
 
-    return this.toTriageResponseDto(symptoms, savedTriage.risk, savedTriage.justification, aiData);
+    return this.toTriageResponseDto(
+      symptoms,
+      savedTriage.risk,
+      savedTriage.justification,
+      aiData,
+    );
   }
 
   async createTriageMock(symptoms: string): Promise<TriageResponseDto> {
@@ -56,7 +68,12 @@ export class TriageService {
 
     const { triage, aiData } = await this.processAiTriage(symptoms);
 
-    return this.toTriageResponseDto(triage.symptoms, triage.risk, triage.justification, aiData);
+    return this.toTriageResponseDto(
+      triage.symptoms,
+      triage.risk,
+      triage.justification,
+      aiData,
+    );
   }
 
   private toTriageResponseDto(
@@ -77,7 +94,9 @@ export class TriageService {
     };
   }
 
-  private async processAiTriage(symptoms: string): Promise<{ triage: Triage; aiData: Record<string, any> }> {
+  private async processAiTriage(
+    symptoms: string,
+  ): Promise<{ triage: Triage; aiData: Record<string, any> }> {
     if (!this.triageServiceUrl) {
       throw new BusinessException('Serviço de triagem indisponível.');
     }
@@ -86,25 +105,38 @@ export class TriageService {
       throw new BusinessException('Chave de aplicação não configurada.');
     }
 
-    this.logger.log(`Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`);
+    this.logger.log(
+      `Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`,
+    );
 
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
         'x-application-key': this.applicationKey,
+        'x-payload-encrypted': 'true',
       },
-      body: JSON.stringify({ symptoms }),
+      body: JSON.stringify(this.httpCryptoService.encrypt({ symptoms })),
     });
 
     if (!response.ok) {
-      throw new BusinessException(`Erro ao chamar serviço de triagem: ${response.status} ${response.statusText}`);
+      throw new BusinessException(
+        `Erro ao chamar serviço de triagem: ${response.status} ${response.statusText}`,
+      );
     }
 
-    const data = this.normalizeEncoding(
-      JSON.parse(new TextDecoder('utf-8').decode(await response.arrayBuffer())),
+    const responseBody = JSON.parse(
+      new TextDecoder('utf-8').decode(await response.arrayBuffer()),
     );
-    this.logger.log(`Resposta triagem: classificacao=${data.classificacao}, nivel=${data.nivel}`);
+    const decryptedBody = this.httpCryptoService.isEncryptedPayload(
+      responseBody,
+    )
+      ? this.httpCryptoService.decrypt<Record<string, any>>(responseBody)
+      : responseBody;
+    const data = this.normalizeEncoding(decryptedBody);
+    this.logger.log(
+      `Resposta triagem: classificacao=${data.classificacao}, nivel=${data.nivel}`,
+    );
 
     const triage = this.triageRepository.create({
       symptoms,
@@ -126,7 +158,10 @@ export class TriageService {
 
     if (value && typeof value === 'object') {
       return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [key, this.normalizeEncoding(item)]),
+        Object.entries(value).map(([key, item]) => [
+          key,
+          this.normalizeEncoding(item),
+        ]),
       ) as T;
     }
 
