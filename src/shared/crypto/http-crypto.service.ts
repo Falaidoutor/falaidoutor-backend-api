@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -170,7 +171,11 @@ export class HttpCryptoService {
       ]).toString('utf8');
 
       return JSON.parse(decrypted) as T;
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       throw new BadRequestException('Invalid encrypted payload.');
     }
   }
