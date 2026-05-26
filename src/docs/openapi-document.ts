@@ -92,8 +92,7 @@ export const openApiDocument = {
           name: { type: 'string', example: 'Maria Silva' },
           cpf: {
             type: 'string',
-            minLength: 11,
-            maxLength: 14,
+            pattern: '^\\d+$',
             example: '12345678901',
           },
           age: { type: 'integer', minimum: 0, example: 34 },
@@ -106,8 +105,7 @@ export const openApiDocument = {
           name: { type: 'string', example: 'Maria Silva' },
           cpf: {
             type: 'string',
-            minLength: 11,
-            maxLength: 14,
+            pattern: '^\\d+$',
             example: '12345678901',
           },
           age: { type: 'integer', minimum: 0, example: 34 },

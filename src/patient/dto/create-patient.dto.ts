@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsString, Length, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsString, Matches, Min } from 'class-validator';
 
 export class CreatePatientDto {
   @IsString()
@@ -7,7 +7,7 @@ export class CreatePatientDto {
 
   @IsString()
   @IsNotEmpty()
-  @Length(11, 14)
+  @Matches(/^\d+$/)
   cpf: string;
 
   @IsInt()
