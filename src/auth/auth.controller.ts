@@ -9,8 +9,7 @@ export class AuthController {
   @Get()
   async authenticate(
     @Query('cpf') cpf: string,
-    @Query('queueTicket') queueTicket: string,
   ): Promise<AuthResponseDto> {
-    return this.authService.authenticate(cpf, queueTicket);
+    return this.authService.authenticate(cpf);
   }
 }

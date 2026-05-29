@@ -24,20 +24,20 @@ describe('AuthController', () => {
 
   describe('authenticate', () => {
     it('should return authenticated response when credentials are valid', async () => {
-      const expected = new AuthResponseDto(true, 'João Silva', 1, 2);
+      const expected = new AuthResponseDto(true, 'Joao Silva', 1, '12345678901');
       service.authenticate.mockResolvedValue(expected);
 
-      const result = await controller.authenticate('12345678901', 'A001');
+      const result = await controller.authenticate('12345678901');
 
       expect(result).toBe(expected);
-      expect(service.authenticate).toHaveBeenCalledWith('12345678901', 'A001');
+      expect(service.authenticate).toHaveBeenCalledWith('12345678901');
     });
 
     it('should return unauthenticated response when credentials are invalid', async () => {
       const expected = new AuthResponseDto(false);
       service.authenticate.mockResolvedValue(expected);
 
-      const result = await controller.authenticate('00000000000', 'Z999');
+      const result = await controller.authenticate('00000000000');
 
       expect(result).toBe(expected);
       expect(result.authenticated).toBe(false);
