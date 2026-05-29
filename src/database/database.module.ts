@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { Patient } from '../shared/entities/patient.entity';
+import { PatientTriage } from '../shared/entities/patient-triage.entity';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
 import { StatusQueue } from '../shared/entities/status-queue.entity';
 import { Triage } from '../shared/entities/triage.entity';
 
-const entities = [Patient, Triage, StatusQueue, QueueTriage];
+const entities = [Patient, Triage, StatusQueue, QueueTriage, PatientTriage];
 
 function getDatabaseConfig(config: ConfigService): TypeOrmModuleOptions {
   const databaseUrl = config.get<string>('DATABASE_URL');
