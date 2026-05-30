@@ -17,10 +17,15 @@ function getPath(url = '/'): string {
   return url.split('?')[0] || '/';
 }
 
+function getMethod(req: ServerlessRequest): string {
+  return req.method?.trim().toUpperCase() ?? '';
+}
+
 function setCorsHeaders(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ): void {
+  res.setHeader('X-FalaiDoutor-Cors-Fix', '2026-05-30-options-v2');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
@@ -82,7 +87,7 @@ export default async function handler(
 ) {
   setCorsHeaders(req, res);
 
-  if (req.method === 'OPTIONS') {
+  if (getMethod(req) === 'OPTIONS') {
     res.statusCode = 204;
     return res.end();
   }
@@ -128,6 +133,8 @@ export default async function handler(
     const server = await bootstrapServer();
     return server(req, res);
   } catch (error) {
+    setCorsHeaders(req, res);
+
     const message =
       error instanceof Error ? error.message : 'Unexpected bootstrap error';
     const stack = error instanceof Error ? error.stack : undefined;
