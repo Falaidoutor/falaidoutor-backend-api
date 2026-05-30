@@ -17,6 +17,20 @@ function getPath(url = '/'): string {
   return url.split('?')[0] || '/';
 }
 
+function setCorsHeaders(res: ServerlessResponse): void {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS',
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Accept, Content-Type, Authorization, x-application-key, x-payload-encrypted',
+  );
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.setHeader('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+}
+
 function isDocsPath(path: string): boolean {
   return path === '/api/docs' || path === '/docs';
 }
@@ -47,6 +61,13 @@ export default async function handler(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ) {
+  setCorsHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    return res.end();
+  }
+
   const path = getPath(req.url);
 
   if (req.url?.startsWith('/favicon.ico') || req.url?.startsWith('/favicon.png')) {
