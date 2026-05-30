@@ -13,6 +13,18 @@ type HttpServer = (req: ServerlessRequest, res: ServerlessResponse) => void;
 
 let cachedServer: HttpServer | undefined;
 
+function setCorsHeaders(res: ServerlessResponse): void {
+  res.setHeader('access-control-allow-origin', '*');
+  res.setHeader(
+    'access-control-allow-methods',
+    'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS',
+  );
+  res.setHeader(
+    'access-control-allow-headers',
+    'Accept,Content-Type,Authorization,x-application-key,x-payload-encrypted',
+  );
+}
+
 function getPath(url = '/'): string {
   return url.split('?')[0] || '/';
 }
@@ -49,7 +61,17 @@ export default async function handler(
 ) {
   const path = getPath(req.url);
 
-  if (req.url?.startsWith('/favicon.ico') || req.url?.startsWith('/favicon.png')) {
+  setCorsHeaders(res);
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    return res.end();
+  }
+
+  if (
+    req.url?.startsWith('/favicon.ico') ||
+    req.url?.startsWith('/favicon.png')
+  ) {
     res.statusCode = 204;
     return res.end();
   }
@@ -73,10 +95,12 @@ export default async function handler(
   if (path === '/' || path === '/api/health' || path === '/health') {
     res.statusCode = 200;
     res.setHeader('content-type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-    }));
+    return res.end(
+      JSON.stringify({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+      }),
+    );
   }
 
   try {
@@ -94,11 +118,13 @@ export default async function handler(
 
     res.statusCode = 500;
     res.setHeader('content-type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify({
-      statusCode: 500,
-      message,
-      path: req.url,
-      timestamp: new Date().toISOString(),
-    }));
+    return res.end(
+      JSON.stringify({
+        statusCode: 500,
+        message,
+        path: req.url,
+        timestamp: new Date().toISOString(),
+      }),
+    );
   }
 }
