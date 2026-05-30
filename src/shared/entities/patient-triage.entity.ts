@@ -70,12 +70,18 @@ export class PatientTriage {
 
   @Column({
     name: 'ai_suggested_risk_classification',
+    type: 'varchar',
     length: 50,
     nullable: true,
   })
   aiSuggestedRiskClassification: string | null;
 
-  @Column({ name: 'ai_suggested_risk_color', length: 30, nullable: true })
+  @Column({
+    name: 'ai_suggested_risk_color',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
   aiSuggestedRiskColor: string | null;
 
   @Column({ name: 'ai_recommended_action', type: 'text', nullable: true })
@@ -91,7 +97,7 @@ export class PatientTriage {
   })
   professionalReviewed: boolean;
 
-  @Column({ name: 'professional_id', nullable: true })
+  @Column({ name: 'professional_id', type: 'integer', nullable: true })
   professionalId: number | null;
 
   @Column({ name: 'professional_notes', type: 'text', nullable: true })
@@ -100,10 +106,20 @@ export class PatientTriage {
   @Column({ name: 'final_result', type: 'jsonb', nullable: true })
   finalResult: Record<string, any> | null;
 
-  @Column({ name: 'final_risk_classification', length: 50, nullable: true })
+  @Column({
+    name: 'final_risk_classification',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   finalRiskClassification: string | null;
 
-  @Column({ name: 'final_risk_color', length: 30, nullable: true })
+  @Column({
+    name: 'final_risk_color',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
   finalRiskColor: string | null;
 
   @Column({
