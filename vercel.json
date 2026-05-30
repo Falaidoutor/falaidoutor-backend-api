@@ -9,18 +9,6 @@
   "routes": [
     {
       "src": "/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
-        "Access-Control-Allow-Headers": "Accept, Content-Type, Authorization, x-application-key, x-payload-encrypted",
-        "Access-Control-Max-Age": "86400",
-        "Vary": "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
-      },
-      "status": 204
-    },
-    {
-      "src": "/(.*)",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",

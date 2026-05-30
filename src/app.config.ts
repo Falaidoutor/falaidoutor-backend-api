@@ -5,13 +5,6 @@ export function configureApp(app: INestApplication): void {
   app.enableCors({
     origin: '*',
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Accept',
-      'Content-Type',
-      'Authorization',
-      'x-application-key',
-      'x-payload-encrypted',
-    ],
     optionsSuccessStatus: 204,
   });
 }

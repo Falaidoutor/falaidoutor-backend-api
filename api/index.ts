@@ -13,23 +13,14 @@ type HttpServer = (req: ServerlessRequest, res: ServerlessResponse) => void;
 
 let cachedServer: HttpServer | undefined;
 
-function setCorsHeaders(res: ServerlessResponse): void {
-  res.setHeader('access-control-allow-origin', '*');
-  res.setHeader(
-    'access-control-allow-methods',
-    'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS',
-  );
-  res.setHeader(
-    'access-control-allow-headers',
-    'Accept,Content-Type,Authorization,x-application-key,x-payload-encrypted',
-  );
-}
-
 function getPath(url = '/'): string {
   return url.split('?')[0] || '/';
 }
 
-function setCorsHeaders(res: ServerlessResponse): void {
+function setCorsHeaders(
+  req: ServerlessRequest,
+  res: ServerlessResponse,
+): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader(
     'Access-Control-Allow-Methods',
@@ -37,10 +28,26 @@ function setCorsHeaders(res: ServerlessResponse): void {
   );
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Accept, Content-Type, Authorization, x-application-key, x-payload-encrypted',
+    getRequestedHeaders(req) ??
+      'Accept, Content-Type, Authorization, x-application-key, x-payload-encrypted',
   );
   res.setHeader('Access-Control-Max-Age', '86400');
-  res.setHeader('Vary', 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+  res.setHeader(
+    'Vary',
+    'Origin, Access-Control-Request-Method, Access-Control-Request-Headers',
+  );
+}
+
+function getRequestedHeaders(req: ServerlessRequest): string | undefined {
+  const headers = (req as { headers?: Record<string, string | string[]> })
+    .headers;
+  const requestedHeaders = headers?.['access-control-request-headers'];
+
+  if (Array.isArray(requestedHeaders)) {
+    return requestedHeaders.join(', ');
+  }
+
+  return requestedHeaders;
 }
 
 function isDocsPath(path: string): boolean {
@@ -73,7 +80,7 @@ export default async function handler(
   req: ServerlessRequest,
   res: ServerlessResponse,
 ) {
-  setCorsHeaders(res);
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
@@ -81,13 +88,6 @@ export default async function handler(
   }
 
   const path = getPath(req.url);
-
-  setCorsHeaders(res);
-
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204;
-    return res.end();
-  }
 
   if (
     req.url?.startsWith('/favicon.ico') ||
