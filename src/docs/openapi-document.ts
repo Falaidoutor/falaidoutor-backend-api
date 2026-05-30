@@ -62,7 +62,7 @@ export const openApiDocument = {
       },
       AuthResponse: {
         type: 'object',
-        required: ['authenticated', 'patientName', 'queueTriageId', 'statusId'],
+        required: ['authenticated', 'patientName', 'patientId', 'cpf'],
         properties: {
           authenticated: { type: 'boolean', example: true },
           patientName: {
@@ -70,8 +70,8 @@ export const openApiDocument = {
             nullable: true,
             example: 'Maria Silva',
           },
-          queueTriageId: { type: 'integer', nullable: true, example: 42 },
-          statusId: { type: 'integer', nullable: true, example: 0 },
+          patientId: { type: 'integer', nullable: true, example: 1 },
+          cpf: { type: 'string', nullable: true, example: '12345678901' },
         },
       },
       Patient: {
@@ -122,6 +122,121 @@ export const openApiDocument = {
             type: 'string',
             example: 'Dor no peito intensa e falta de ar.',
           },
+        },
+      },
+      CreatePatientTriageRequest: {
+        type: 'object',
+        required: ['cpf', 'symptoms'],
+        properties: {
+          cpf: { type: 'string', example: '12345678901' },
+          symptoms: {
+            type: 'string',
+            example: 'Dor no peito intensa e falta de ar.',
+          },
+        },
+      },
+      PatientTriageResponse: {
+        type: 'object',
+        required: [
+          'id',
+          'symptoms',
+          'queueTicket',
+          'symptomsPreview',
+          'createdAt',
+          'updatedAt',
+          'status',
+          'patientStatus',
+          'riskClassification',
+          'displayColor',
+        ],
+        properties: {
+          id: { type: 'integer', example: 10 },
+          symptoms: {
+            type: 'string',
+            example: 'Dor no peito intensa e falta de ar.',
+          },
+          queueTicket: { type: 'string', example: 'FD-LWXYZ1-ABCD' },
+          symptomsPreview: {
+            type: 'string',
+            example: 'Dor no peito intensa e falta de ar.',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2026-05-29T12:00:00.000Z',
+          },
+          updatedAt: {
+            type: 'string',
+            format: 'date-time',
+            example: '2026-05-29T12:00:00.000Z',
+          },
+          status: {
+            type: 'string',
+            enum: [
+              'PENDING',
+              'AI_PROCESSING',
+              'WAITING_PROFESSIONAL_REVIEW',
+              'COMPLETED',
+            ],
+            example: 'PENDING',
+          },
+          patientStatus: {
+            type: 'string',
+            enum: ['PENDENTE', 'ANALISADA'],
+            example: 'PENDENTE',
+          },
+          riskClassification: {
+            type: 'string',
+            nullable: true,
+            example: 'ESI-2',
+          },
+          displayColor: { type: 'string', example: 'yellow' },
+        },
+      },
+      PendingReviewTriage: {
+        type: 'object',
+        properties: {
+          id: { type: 'integer', example: 10 },
+          patientId: { type: 'integer', example: 1 },
+          patientName: { type: 'string', example: 'Maria Silva' },
+          patientAge: { type: 'integer', example: 34 },
+          patientGender: { type: 'string', example: 'F' },
+          symptoms: { type: 'string', example: 'Dor no peito intensa.' },
+          queueTicket: { type: 'string', example: 'FD-LWXYZ1-ABCD' },
+          aiSummary: { type: 'string', nullable: true, example: 'Resumo da IA' },
+          aiSuggestedRiskClassification: {
+            type: 'string',
+            nullable: true,
+            example: 'ESI-2',
+          },
+          aiSuggestedRiskColor: {
+            type: 'string',
+            nullable: true,
+            example: '#fe0000',
+          },
+          aiRecommendedAction: {
+            type: 'string',
+            nullable: true,
+            example: 'Avaliar com prioridade.',
+          },
+          aiResult: { type: 'object', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+          aiProcessedAt: { type: 'string', format: 'date-time', nullable: true },
+          queueTriageId: { type: 'integer', nullable: true, example: null },
+        },
+      },
+      ProfessionalReviewRequest: {
+        type: 'object',
+        required: ['finalRiskClassification'],
+        properties: {
+          professionalId: { type: 'string', example: '7' },
+          professionalNotes: {
+            type: 'string',
+            example: 'Confirmada classificacao sugerida pela IA.',
+          },
+          finalResult: { type: 'object', nullable: true },
+          finalRiskClassification: { type: 'string', example: 'ESI-2' },
+          finalRiskColor: { type: 'string', example: '#fe0000' },
         },
       },
       TriageMockRequest: {
@@ -299,7 +414,7 @@ export const openApiDocument = {
     '/login': {
       get: {
         tags: ['Auth'],
-        summary: 'Autentica um paciente por CPF e ficha de fila.',
+        summary: 'Autentica um paciente por CPF.',
         security: [{ applicationKey: [] }],
         parameters: [
           {
@@ -308,13 +423,6 @@ export const openApiDocument = {
             required: true,
             schema: { type: 'string' },
             example: '12345678901',
-          },
-          {
-            name: 'queueTicket',
-            in: 'query',
-            required: true,
-            schema: { type: 'string' },
-            example: 'A001',
           },
         ],
         responses: {
@@ -478,6 +586,134 @@ export const openApiDocument = {
             },
           },
           '401': { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+      post: {
+        tags: ['Triages'],
+        summary: 'Cria uma nova triagem assincrona para o paciente.',
+        description:
+          'Persiste a triagem como pendente, gera uma senha de fila exclusiva para esta triagem e dispara o processamento pela IA em background.',
+        security: [{ applicationKey: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/CreatePatientTriageRequest',
+              },
+            },
+          },
+        },
+        responses: {
+          '201': {
+            description: 'Triagem criada como pendente.',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/PatientTriageResponse',
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+    },
+    '/triages/me': {
+      get: {
+        tags: ['Triages'],
+        summary: 'Lista as triagens do paciente autenticado por CPF.',
+        security: [{ applicationKey: [] }],
+        parameters: [
+          {
+            name: 'cpf',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            example: '12345678901',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Triagens do paciente com estado simplificado.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    $ref: '#/components/schemas/PatientTriageResponse',
+                  },
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+    },
+    '/triages/pending-review': {
+      get: {
+        tags: ['Triages'],
+        summary: 'Lista triagens aguardando revisao profissional.',
+        security: [{ applicationKey: [] }],
+        responses: {
+          '200': {
+            description: 'Triagens processadas pela IA e ainda nao revisadas.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: {
+                    $ref: '#/components/schemas/PendingReviewTriage',
+                  },
+                },
+              },
+            },
+          },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+        },
+      },
+    },
+    '/triages/{triageId}/professional-review': {
+      patch: {
+        tags: ['Triages'],
+        summary: 'Confirma ou ajusta a triagem sugerida pela IA.',
+        security: [{ applicationKey: [] }],
+        parameters: [
+          {
+            name: 'triageId',
+            in: 'path',
+            required: true,
+            schema: { type: 'integer' },
+            example: 10,
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/ProfessionalReviewRequest',
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Triagem marcada como analisada para o paciente.',
+            content: {
+              'application/json': {
+                schema: {
+                  $ref: '#/components/schemas/PatientTriageResponse',
+                },
+              },
+            },
+          },
+          '400': { $ref: '#/components/responses/BadRequest' },
+          '401': { $ref: '#/components/responses/Unauthorized' },
+          '404': { $ref: '#/components/responses/NotFound' },
         },
       },
     },

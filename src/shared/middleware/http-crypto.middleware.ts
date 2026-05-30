@@ -20,6 +20,10 @@ export class HttpCryptoMiddleware implements NestMiddleware {
   ) {}
 
   use(req: CryptoRequest, _res: Response, next: NextFunction): void {
+    if (this.isCorsPreflight(req)) {
+      return next();
+    }
+
     if (this.isPublicDocumentationRoute(req)) {
       return next();
     }
@@ -115,5 +119,9 @@ export class HttpCryptoMiddleware implements NestMiddleware {
     return ['/docs', '/docs-json', '/api/docs', '/api/docs-json'].includes(
       path,
     );
+  }
+
+  private isCorsPreflight(req: Request): boolean {
+    return req.method === 'OPTIONS';
   }
 }

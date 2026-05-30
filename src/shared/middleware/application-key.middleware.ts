@@ -1,4 +1,8 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NestMiddleware,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NextFunction, Request, Response } from 'express';
 
@@ -7,13 +11,21 @@ export class ApplicationKeyMiddleware implements NestMiddleware {
   constructor(private readonly configService: ConfigService) {}
 
   use(req: Request, _res: Response, next: NextFunction): void {
+    if (this.isCorsPreflight(req)) {
+      return next();
+    }
+
     if (this.isPublicDocumentationRoute(req)) {
       return next();
     }
 
-    const expectedKey = this.configService.get<string>('APPLICATION_KEY')?.trim();
+    const expectedKey = this.configService
+      .get<string>('APPLICATION_KEY')
+      ?.trim();
     const headerValue = req.headers['x-application-key'];
-    const applicationKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+    const applicationKey = Array.isArray(headerValue)
+      ? headerValue[0]
+      : headerValue;
 
     if (!expectedKey) {
       throw new UnauthorizedException('Application key is not configured.');
@@ -28,6 +40,12 @@ export class ApplicationKeyMiddleware implements NestMiddleware {
 
   private isPublicDocumentationRoute(req: Request): boolean {
     const path = req.path ?? req.url;
-    return ['/docs', '/docs-json', '/api/docs', '/api/docs-json'].includes(path);
+    return ['/docs', '/docs-json', '/api/docs', '/api/docs-json'].includes(
+      path,
+    );
+  }
+
+  private isCorsPreflight(req: Request): boolean {
+    return req.method === 'OPTIONS';
   }
 }

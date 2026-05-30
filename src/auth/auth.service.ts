@@ -1,34 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { QueueTriage } from '../shared/entities/queue-triage.entity';
+import { Patient } from '../shared/entities/patient.entity';
 import { AuthResponseDto } from './dto/auth-response.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(QueueTriage)
-    private readonly queueTriageRepository: Repository<QueueTriage>,
+    @InjectRepository(Patient)
+    private readonly patientRepository: Repository<Patient>,
   ) {}
 
-  async authenticate(cpf: string, queueTicket: string): Promise<AuthResponseDto> {
-    const queueTriage = await this.queueTriageRepository.findOne({
-      where: {
-        queueTicket,
-        patient: { cpf },
-      },
-      relations: ['patient', 'status'],
+  async authenticate(cpf: string): Promise<AuthResponseDto> {
+    const normalizedCpf = this.normalizeCpf(cpf);
+    const patient = await this.patientRepository.findOne({
+      where: { cpf: normalizedCpf },
     });
 
-    if (!queueTriage) {
+    if (!patient) {
       return new AuthResponseDto(false);
     }
 
     return new AuthResponseDto(
       true,
-      queueTriage.patient.name,
-      queueTriage.id,
-      queueTriage.status.id,
+      patient.name,
+      patient.id,
+      patient.cpf,
     );
+  }
+
+  private normalizeCpf(cpf: string): string {
+    return (cpf ?? '').replace(/\D/g, '');
   }
 }
