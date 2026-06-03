@@ -61,7 +61,14 @@ export class QueueTriageController {
 
   @Get()
   getFinalizedTriages(): Promise<TriageListDto[]> {
-    return this.queueTriageService.getFinalizedTriages();
+    return this.queueTriageService.getMedicalCases();
+  }
+
+  @Get('patient/:triageId')
+  getPatientTriageDetails(
+    @Param('triageId', ParseIntPipe) triageId: number,
+  ): Promise<FinalizedTriageDto> {
+    return this.queueTriageService.getPatientTriageById(triageId);
   }
 
   @Get(':queueId')

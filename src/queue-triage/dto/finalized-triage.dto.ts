@@ -1,5 +1,7 @@
 export class FinalizedTriageDto {
   queueId: number;
+  triageId?: number;
+  source?: 'queue-triage' | 'patient-triage';
   name: string;
   gender: string;
   age: number;
@@ -14,4 +16,5 @@ export class FinalizedTriageDto {
   justificativa: string;
   createdAtDate: string;
   createdAtTime: string;
+  aiRecommendedAction?: string | null;
 }

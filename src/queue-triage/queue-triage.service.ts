@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
+import {
+  PatientTriage,
+  PatientTriageStatus,
+} from '../shared/entities/patient-triage.entity';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
 import { Triage } from '../shared/entities/triage.entity';
 import { FinalizedTriageDto } from './dto/finalized-triage.dto';
@@ -25,6 +29,8 @@ export class QueueTriageService {
     private readonly queueTriageRepository: Repository<QueueTriage>,
     @InjectRepository(Triage)
     private readonly triageRepository: Repository<Triage>,
+    @InjectRepository(PatientTriage)
+    private readonly patientTriageRepository: Repository<PatientTriage>,
   ) {}
 
   async getValidQueueTriage(
@@ -57,6 +63,15 @@ export class QueueTriageService {
     );
   }
 
+  async getMedicalCases(): Promise<TriageListDto[]> {
+    const [finalizedTriages, patientTriages] = await Promise.all([
+      this.getFinalizedTriages(),
+      this.getPatientTriageCases(),
+    ]);
+
+    return this.sortByRiskPriority([...patientTriages, ...finalizedTriages]);
+  }
+
   async getFinalizedTriages(): Promise<TriageListDto[]> {
     const rows: FinalizedTriageRow[] = await this.queueTriageRepository.query(`
       SELECT
@@ -86,6 +101,7 @@ export class QueueTriageService {
 
     return rows.map((row) => ({
       queueId: Number(row.queue_id),
+      source: 'queue-triage',
       name: row.name,
       gender: row.gender,
       age: Number(row.age),
@@ -143,6 +159,48 @@ export class QueueTriageService {
     };
   }
 
+  async getPatientTriageById(id: number): Promise<FinalizedTriageDto> {
+    const patientTriage = await this.patientTriageRepository.findOne({
+      where: { id },
+    });
+
+    if (!patientTriage) {
+      throw new NotFoundException(`Triagem com ID ${id} nao encontrada.`);
+    }
+
+    const risk =
+      patientTriage.finalRiskClassification ||
+      patientTriage.aiSuggestedRiskClassification ||
+      (patientTriage.aiProcessing ? 'PROCESSANDO IA' : 'PENDENTE');
+    const { createdAtDate, createdAtTime } = this.formatDateTime(
+      patientTriage.createdAt,
+    );
+
+    return {
+      queueId: patientTriage.queueTriage?.id ?? patientTriage.id,
+      triageId: patientTriage.id,
+      source: 'patient-triage',
+      name: patientTriage.patient.name,
+      gender: patientTriage.patient.gender,
+      age: patientTriage.patient.age,
+      queueTicket: patientTriage.queueTicket,
+      symptoms: patientTriage.symptoms,
+      classificacao: risk,
+      nivel: this.getRiskPriority(risk),
+      nome_nivel: this.getRiskLevelName(risk),
+      ponto_decisao_ativado: '',
+      criterios_ponto_decisao: [],
+      recursos_estimados: 0,
+      justificativa:
+        patientTriage.aiSummary ||
+        patientTriage.aiError ||
+        'Aguardando processamento da IA.',
+      createdAtDate,
+      createdAtTime,
+      aiRecommendedAction: patientTriage.aiRecommendedAction,
+    };
+  }
+
   async updateQueueTriage(
     id: number,
     dto: UpdateFinalizedTriageDto,
@@ -186,6 +244,70 @@ export class QueueTriageService {
       const prioB = RISK_PRIORITY[b.classificacao as RiskLevel] ?? 6;
       return prioA - prioB || a.queueTicket.localeCompare(b.queueTicket);
     });
+  }
+
+  private async getPatientTriageCases(): Promise<TriageListDto[]> {
+    const triages = await this.patientTriageRepository.find({
+      where: {
+        status: In([
+          PatientTriageStatus.Pending,
+          PatientTriageStatus.AiProcessing,
+          PatientTriageStatus.WaitingProfessionalReview,
+        ]),
+        professionalReviewed: false,
+      },
+      order: {
+        createdAt: 'ASC',
+      },
+    });
+
+    return triages.map((triage) => {
+      const risk =
+        triage.aiSuggestedRiskClassification ||
+        (triage.aiProcessing ? 'PROCESSANDO IA' : 'PENDENTE');
+
+      return {
+        queueId: triage.queueTriage?.id ?? triage.id,
+        triageId: triage.id,
+        source: 'patient-triage',
+        name: triage.patient.name,
+        gender: triage.patient.gender,
+        age: triage.patient.age,
+        queueTicket: triage.queueTicket,
+        classificacao: risk,
+        prioridade: this.getRiskPriority(risk)
+          ? String(this.getRiskPriority(risk))
+          : '',
+        status: triage.status,
+      };
+    });
+  }
+
+  private getRiskPriority(risk: string | null | undefined): number {
+    return RISK_PRIORITY[risk as RiskLevel] ?? 0;
+  }
+
+  private getRiskLevelName(risk: string | null | undefined): string {
+    const nivel = this.getRiskPriority(risk);
+    const nomeNivelMap: Record<number, string> = {
+      1: 'Ressuscitacao',
+      2: 'Emergente',
+      3: 'Urgente',
+      4: 'Menos urgente',
+      5: 'Nao urgente',
+    };
+
+    return nomeNivelMap[nivel] ?? '';
+  }
+
+  private formatDateTime(date: Date): {
+    createdAtDate: string;
+    createdAtTime: string;
+  } {
+    return {
+      createdAtDate: date.toLocaleDateString('pt-BR'),
+      createdAtTime: date.toLocaleTimeString('pt-BR'),
+    };
   }
 
   private async getExistingQueueTriageWithTriage(
