@@ -253,8 +253,8 @@ export class QueueTriageService {
           PatientTriageStatus.Pending,
           PatientTriageStatus.AiProcessing,
           PatientTriageStatus.WaitingProfessionalReview,
+          PatientTriageStatus.Completed,
         ]),
-        professionalReviewed: false,
       },
       order: {
         createdAt: 'ASC',
@@ -263,6 +263,7 @@ export class QueueTriageService {
 
     return triages.map((triage) => {
       const risk =
+        triage.finalRiskClassification ||
         triage.aiSuggestedRiskClassification ||
         (triage.aiProcessing ? 'PROCESSANDO IA' : 'PENDENTE');
 

@@ -1,8 +1,12 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { BusinessException } from '../shared/exceptions/business.exception';
+import {
+  PatientTriage,
+  PatientTriageStatus,
+} from '../shared/entities/patient-triage.entity';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
 import { Triage } from '../shared/entities/triage.entity';
 import { QueueTriageService } from './queue-triage.service';
@@ -37,6 +41,7 @@ describe('QueueTriageService', () => {
   let service: QueueTriageService;
   let repo: jest.Mocked<Repository<QueueTriage>>;
   let triageRepo: jest.Mocked<Repository<Triage>>;
+  let patientTriageRepo: jest.Mocked<Repository<PatientTriage>>;
   let manager: { query: jest.Mock; update: jest.Mock };
 
   beforeEach(async () => {
@@ -65,12 +70,20 @@ describe('QueueTriageService', () => {
             update: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(PatientTriage),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(QueueTriageService);
     repo = module.get(getRepositoryToken(QueueTriage));
     triageRepo = module.get(getRepositoryToken(Triage));
+    patientTriageRepo = module.get(getRepositoryToken(PatientTriage));
   });
 
   describe('getValidQueueTriage', () => {
@@ -152,6 +165,7 @@ describe('QueueTriageService', () => {
       expect(result).toEqual([
         {
           queueId: 1,
+          source: 'queue-triage',
           name: 'João Silva',
           gender: 'M',
           age: 30,
@@ -168,6 +182,54 @@ describe('QueueTriageService', () => {
       const result = await service.getFinalizedTriages();
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('getMedicalCases', () => {
+    it('should include reviewed patient triages as completed medical cases', async () => {
+      repo.query.mockResolvedValue([]);
+      patientTriageRepo.find.mockResolvedValue([
+        {
+          id: 10,
+          patient: mockPatient,
+          queueTriage: null,
+          queueTicket: 'FD-001',
+          status: PatientTriageStatus.Completed,
+          aiProcessing: false,
+          aiSuggestedRiskClassification: 'ESI-3',
+          finalRiskClassification: 'ESI-2',
+        },
+      ] as any);
+
+      const result = await service.getMedicalCases();
+
+      expect(patientTriageRepo.find).toHaveBeenCalledWith({
+        where: {
+          status: In([
+            PatientTriageStatus.Pending,
+            PatientTriageStatus.AiProcessing,
+            PatientTriageStatus.WaitingProfessionalReview,
+            PatientTriageStatus.Completed,
+          ]),
+        },
+        order: {
+          createdAt: 'ASC',
+        },
+      });
+      expect(result).toEqual([
+        {
+          queueId: 10,
+          triageId: 10,
+          source: 'patient-triage',
+          name: 'João Silva',
+          gender: 'M',
+          age: 30,
+          queueTicket: 'FD-001',
+          classificacao: 'ESI-2',
+          prioridade: '2',
+          status: PatientTriageStatus.Completed,
+        },
+      ]);
     });
   });
 
