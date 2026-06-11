@@ -394,7 +394,9 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       aiSuggestedRiskClassification: triage.aiSuggestedRiskClassification,
       aiSuggestedRiskColor: triage.aiSuggestedRiskColor,
       aiRecommendedAction: triage.aiRecommendedAction,
-      aiResult: triage.aiResult,
+      aiResult: triage.aiResult
+        ? this.withNormalizedConfidence(triage.aiResult)
+        : null,
       createdAt: triage.createdAt.toISOString(),
       aiProcessedAt: triage.aiProcessedAt?.toISOString() ?? null,
       queueTriageId: triage.queueTriage?.id ?? null,
@@ -403,6 +405,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
   }
 
   private toAiTriageFields(data: Record<string, any>): AiTriageFields {
+    const result = this.withNormalizedConfidence(data);
     const suggestedRiskClassification = this.readString(data, [
       'suggestedRiskClassification',
       'classificacao',
@@ -412,7 +415,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       this.resolveRiskColor(suggestedRiskClassification);
 
     return {
-      result: data,
+      result,
       summary: this.readString(data, ['summary', 'resumo', 'justificativa']),
       suggestedRiskClassification,
       suggestedRiskColor,
@@ -440,6 +443,80 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
     }
 
     return null;
+  }
+
+  private withNormalizedConfidence(data: Record<string, any>): Record<string, any> {
+    const confidenceLabel = this.readString(data, [
+      'confidenceLabel',
+      'confianca',
+    ])?.toLowerCase();
+    const confidence = this.readConfidence(data, confidenceLabel);
+
+    if (confidence === null) {
+      return data;
+    }
+
+    return {
+      ...data,
+      confidence,
+      confidenceScore: confidence,
+      confidenceLabel: confidenceLabel ?? data.confidenceLabel ?? null,
+    };
+  }
+
+  private readConfidence(
+    data: Record<string, any>,
+    confidenceLabel?: string | null,
+  ): number | null {
+    const keys = ['confidence', 'confidenceScore', 'confidence_score', 'score'];
+
+    for (const key of keys) {
+      const numeric = this.toConfidenceNumber(data[key]);
+      if (numeric !== null) {
+        return numeric;
+      }
+    }
+
+    const labelScores: Record<string, number> = {
+      alta: 90,
+      media: 65,
+      média: 65,
+      baixa: 35,
+    };
+
+    return confidenceLabel ? (labelScores[confidenceLabel] ?? null) : null;
+  }
+
+  private toConfidenceNumber(value: unknown): number | null {
+    if (typeof value === 'boolean' || value === null || value === undefined) {
+      return null;
+    }
+
+    let numeric: number;
+
+    if (typeof value === 'number') {
+      numeric = value;
+    } else if (typeof value === 'string') {
+      numeric = Number.parseFloat(
+        value.trim().replace('%', '').replace(',', '.'),
+      );
+    } else {
+      return null;
+    }
+
+    if (!Number.isFinite(numeric)) {
+      return null;
+    }
+
+    if (numeric <= 1) {
+      numeric *= 100;
+    }
+
+    if (numeric < 0 || numeric > 100) {
+      return null;
+    }
+
+    return Math.round(numeric * 100) / 100;
   }
 
   private previewSymptoms(symptoms: string): string {
