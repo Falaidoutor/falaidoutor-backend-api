@@ -468,6 +468,20 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
     data: Record<string, any>,
     confidenceLabel?: string | null,
   ): number | null {
+    const labelScores: Record<string, number> = {
+      alta: 95,
+      media: 90,
+      média: 90,
+      baixa: 35,
+    };
+
+    const labelScore = confidenceLabel
+      ? (labelScores[confidenceLabel] ?? null)
+      : null;
+    if (labelScore !== null) {
+      return labelScore;
+    }
+
     const keys = ['confidence', 'confidenceScore', 'confidence_score', 'score'];
 
     for (const key of keys) {
@@ -477,14 +491,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    const labelScores: Record<string, number> = {
-      alta: 90,
-      media: 65,
-      média: 65,
-      baixa: 35,
-    };
-
-    return confidenceLabel ? (labelScores[confidenceLabel] ?? null) : null;
+    return null;
   }
 
   private toConfidenceNumber(value: unknown): number | null {
