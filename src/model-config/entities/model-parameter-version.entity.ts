@@ -38,10 +38,15 @@ export class ModelParameterVersion {
   @Column({ name: 'streaming_enabled', default: true })
   streamingEnabled: boolean;
 
-  @Column({ name: 'version_label', length: 80, nullable: true })
+  @Column({
+    name: 'version_label',
+    type: 'varchar',
+    length: 80,
+    nullable: true,
+  })
   versionLabel: string | null;
 
-  @Column({ name: 'created_by', length: 120, nullable: true })
+  @Column({ name: 'created_by', type: 'varchar', length: 120, nullable: true })
   createdBy: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
