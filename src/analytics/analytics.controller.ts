@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsResponseDto } from './dto/analytics-response.dto';
 
@@ -7,7 +7,9 @@ export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
   @Get('metrics')
-  getMetrics(): Promise<AnalyticsResponseDto> {
-    return this.analyticsService.getMetrics();
+  getMetrics(
+    @Query('qualityPeriod') qualityPeriod?: string,
+  ): Promise<AnalyticsResponseDto> {
+    return this.analyticsService.getMetrics(qualityPeriod);
   }
 }

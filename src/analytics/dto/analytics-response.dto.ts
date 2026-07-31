@@ -1,4 +1,14 @@
-export type AnalyticsRiskLevel = 'ESI-1' | 'ESI-2' | 'ESI-3' | 'ESI-4' | 'ESI-5';
+export type AnalyticsRiskLevel =
+  | 'ESI-1'
+  | 'ESI-2'
+  | 'ESI-3'
+  | 'ESI-4'
+  | 'ESI-5';
+export type AnalyticsQualityPeriod =
+  | 'today'
+  | 'yesterday'
+  | 'last7d'
+  | 'last30d';
 
 export class AnalyticsResponseDto {
   generatedAt: string;
@@ -19,4 +29,8 @@ export class AnalyticsResponseDto {
     oneLevel: number | null;
     broad: number | null;
   };
+  qualityPeriod: AnalyticsQualityPeriod;
+  qualityPeriodLabel: string;
+  qualityStart: string;
+  qualityEnd: string;
 }
