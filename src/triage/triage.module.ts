@@ -5,9 +5,10 @@ import { QueueTriageModule } from '../queue-triage/queue-triage.module';
 import { HttpCryptoService } from '../shared/crypto/http-crypto.service';
 import { TriageController } from './triage.controller';
 import { TriageService } from './triage.service';
+import { ModelConfigModule } from '../model-config/model-config.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Triage]), QueueTriageModule],
+  imports: [TypeOrmModule.forFeature([Triage]), QueueTriageModule, ModelConfigModule],
   controllers: [TriageController],
   providers: [TriageService, HttpCryptoService],
 })

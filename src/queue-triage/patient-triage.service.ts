@@ -20,6 +20,7 @@ import { PatientTriageListQueryDto } from './dto/patient-triage-list-query.dto';
 import { PatientTriageResponseDto } from './dto/patient-triage-response.dto';
 import { PendingReviewTriageDto } from './dto/pending-review-triage.dto';
 import { ProfessionalReviewTriageDto } from './dto/professional-review-triage.dto';
+import { ModelConfigService } from '../model-config/model-config.service';
 
 type AiTriageFields = {
   result: Record<string, any>;
@@ -47,6 +48,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
     private readonly patientRepository: Repository<Patient>,
     private readonly configService: ConfigService,
     private readonly httpCryptoService: HttpCryptoService,
+    private readonly modelConfigService: ModelConfigService,
   ) {
     this.triageServiceUrl = this.configService
       .get<string>('TRIAGE_SERVICE_URL')
@@ -310,6 +312,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
     const payload = {
       symptoms: triage.symptoms,
       triageId: triage.id,
+      modelConfig: await this.modelConfigService.getLatest(),
       patientContext: {
         patientId: triage.patient.id,
         age: triage.patient.age,

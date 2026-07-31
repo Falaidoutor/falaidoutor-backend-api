@@ -6,8 +6,9 @@ import { PatientTriage } from '../shared/entities/patient-triage.entity';
 import { QueueTriage } from '../shared/entities/queue-triage.entity';
 import { StatusQueue } from '../shared/entities/status-queue.entity';
 import { Triage } from '../shared/entities/triage.entity';
+import { ModelParameterVersion } from '../model-config/entities/model-parameter-version.entity';
 
-const entities = [Patient, Triage, StatusQueue, QueueTriage, PatientTriage];
+const entities = [Patient, Triage, StatusQueue, QueueTriage, PatientTriage, ModelParameterVersion];
 
 function getDatabaseConfig(config: ConfigService): TypeOrmModuleOptions {
   const databaseUrl = config.get<string>('DATABASE_URL');

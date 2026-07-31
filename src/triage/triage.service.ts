@@ -8,6 +8,7 @@ import { QueueTriageService } from '../queue-triage/queue-triage.service';
 import { HttpCryptoService } from '../shared/crypto/http-crypto.service';
 import { TriageRequestDto } from './dto/triage-request.dto';
 import { TriageResponseDto } from './dto/triage-response.dto';
+import { ModelConfigService } from '../model-config/model-config.service';
 
 @Injectable()
 export class TriageService {
@@ -21,6 +22,7 @@ export class TriageService {
     private readonly queueTriageService: QueueTriageService,
     private readonly configService: ConfigService,
     private readonly httpCryptoService: HttpCryptoService,
+    private readonly modelConfigService: ModelConfigService,
   ) {
     this.triageServiceUrl = this.configService
       .get<string>('TRIAGE_SERVICE_URL')
@@ -109,6 +111,7 @@ export class TriageService {
       `Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`,
     );
 
+    const modelConfig = await this.modelConfigService.getLatest();
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
       headers: {
@@ -116,7 +119,10 @@ export class TriageService {
         'x-application-key': this.applicationKey,
         'x-payload-encrypted': 'true',
       },
-      body: JSON.stringify(this.httpCryptoService.encrypt({ symptoms })),
+      body: JSON.stringify(this.httpCryptoService.encrypt({
+        symptoms,
+        modelConfig,
+      })),
     });
 
     if (!response.ok) {

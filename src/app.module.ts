@@ -12,6 +12,8 @@ import { HttpCryptoInterceptor } from './shared/interceptors/http-crypto.interce
 import { ApplicationKeyMiddleware } from './shared/middleware/application-key.middleware';
 import { HttpCryptoMiddleware } from './shared/middleware/http-crypto.middleware';
 import { TriageModule } from './triage/triage.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ModelConfigModule } from './model-config/model-config.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { TriageModule } from './triage/triage.module';
     PatientModule,
     QueueTriageModule,
     TriageModule,
+    AnalyticsModule,
+    ModelConfigModule,
   ],
   controllers: [DocsController],
   providers: [
