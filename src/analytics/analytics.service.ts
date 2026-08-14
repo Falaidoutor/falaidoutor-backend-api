@@ -109,7 +109,7 @@ export class AnalyticsService {
       criticalCasesDelta: this.delta(todayCritical, yesterdayCritical),
       riskDistribution: RISK_LEVELS.map((level) => ({
         level,
-        count: todayRows.filter((row) => row.risk === level).length,
+        count: qualityRows.filter((row) => row.risk === level).length,
       })),
       hourlyVolume,
       forecastDemand: Array.from({ length: 16 }, (_, index) =>
