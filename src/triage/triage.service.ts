@@ -93,6 +93,8 @@ export class TriageService {
       criterios_ponto_decisao: aiData.criterios_ponto_decisao,
       recursos_estimados: aiData.recursos_estimados,
       justificativa,
+      modelo_usado: aiData.modelo_usado,
+      fallback_modelo_ativado: aiData.fallback_modelo_ativado,
     };
   }
 

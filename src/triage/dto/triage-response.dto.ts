@@ -7,4 +7,6 @@ export class TriageResponseDto {
   criterios_ponto_decisao: string[];
   recursos_estimados: number;
   justificativa: string;
+  modelo_usado?: string;
+  fallback_modelo_ativado?: boolean;
 }
