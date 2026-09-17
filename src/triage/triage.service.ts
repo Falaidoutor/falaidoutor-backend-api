@@ -9,6 +9,7 @@ import { HttpCryptoService } from '../shared/crypto/http-crypto.service';
 import { TriageRequestDto } from './dto/triage-request.dto';
 import { TriageResponseDto } from './dto/triage-response.dto';
 import { ModelConfigService } from '../model-config/model-config.service';
+import { performance } from 'node:perf_hooks';
 
 @Injectable()
 export class TriageService {
@@ -109,11 +110,13 @@ export class TriageService {
       throw new BusinessException('Chave de aplicação não configurada.');
     }
 
-    this.logger.log(
-      `Processando triagem AI para sintomas: ${symptoms.substring(0, 80)}...`,
-    );
+    const startedAt = performance.now();
+    this.logger.log(`triage.start input_chars=${symptoms.length}`);
 
     const modelConfig = await this.modelConfigService.getLatest();
+    this.logger.debug(
+      `triage.model_config model=${modelConfig.modelName} order=${modelConfig.modelOrder.join(',')}`,
+    );
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
       headers: {
@@ -128,6 +131,9 @@ export class TriageService {
     });
 
     if (!response.ok) {
+      this.logger.error(
+        `triage.ai_http_error status=${response.status} status_text=${response.statusText} elapsed_ms=${Math.round(performance.now() - startedAt)}`,
+      );
       throw new BusinessException(
         `Erro ao chamar serviço de triagem: ${response.status} ${response.statusText}`,
       );
@@ -143,7 +149,7 @@ export class TriageService {
       : responseBody;
     const data = this.normalizeEncoding(decryptedBody);
     this.logger.log(
-      `Resposta triagem: classificacao=${data.classificacao}, nivel=${data.nivel}`,
+      `triage.complete classification=${data.classificacao} level=${data.nivel} model=${data.modelo_usado ?? 'unknown'} fallback=${data.fallback_modelo_ativado === true} elapsed_ms=${Math.round(performance.now() - startedAt)}`,
     );
 
     const triage = this.triageRepository.create({

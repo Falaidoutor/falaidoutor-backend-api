@@ -14,6 +14,9 @@ export class ModelParameterVersion {
   @Column({ name: 'model_name', length: 120 })
   modelName: string;
 
+  @Column({ name: 'model_order', type: 'jsonb', default: () => "'[]'::jsonb" })
+  modelOrder: string[];
+
   @Column({ length: 50, default: 'groq' })
   provider: string;
 

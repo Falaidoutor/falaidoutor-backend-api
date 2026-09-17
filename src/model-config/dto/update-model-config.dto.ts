@@ -2,6 +2,7 @@ import {
   IsBoolean,
   IsNumber,
   IsOptional,
+  IsArray,
   IsString,
   Max,
   MaxLength,
@@ -12,6 +13,11 @@ import {
 export class UpdateModelConfigDto {
   @IsString()
   modelName: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  modelOrder?: string[];
 
   @IsString()
   provider: string;

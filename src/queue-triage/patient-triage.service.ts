@@ -301,6 +301,8 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async callAiTriage(triage: PatientTriage): Promise<AiTriageFields> {
+    const startedAt = Date.now();
+    this.logger.log(`async_triage.start triage_id=${triage.id} input_chars=${triage.symptoms.length}`);
     if (!this.triageServiceUrl) {
       throw new BusinessException('Servico de triagem indisponivel.');
     }
@@ -319,6 +321,9 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
         gender: triage.patient.gender,
       },
     };
+    this.logger.debug(
+      `async_triage.model_config triage_id=${triage.id} model=${payload.modelConfig.modelName} order=${payload.modelConfig.modelOrder.join(',')}`,
+    );
     const response = await fetch(`${this.triageServiceUrl}/triage`, {
       method: 'POST',
       headers: {
@@ -340,12 +345,19 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
     const data = this.normalizeEncoding(decryptedBody);
 
     if (!response.ok) {
+      this.logger.error(
+        `async_triage.ai_http_error triage_id=${triage.id} status=${response.status} elapsed_ms=${Date.now() - startedAt}`,
+      );
       throw new BusinessException(
         `Erro ao chamar servico de triagem: ${response.status} ${response.statusText} - ${this.describeAiError(data)}`,
       );
     }
 
-    return this.toAiTriageFields(data);
+    const fields = this.toAiTriageFields(data);
+    this.logger.log(
+      `async_triage.complete triage_id=${triage.id} model=${data.modelo_usado ?? 'unknown'} fallback=${data.fallback_modelo_ativado === true} elapsed_ms=${Date.now() - startedAt}`,
+    );
+    return fields;
   }
 
   private async getPatientByCpf(cpf: string): Promise<Patient> {
