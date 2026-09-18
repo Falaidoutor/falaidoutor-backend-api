@@ -47,6 +47,7 @@ const mockPatientTriage: PatientTriageResponseDto = {
   patientStatus: 'PENDENTE',
   riskClassification: null,
   displayColor: 'yellow',
+  aiError: null,
 };
 
 describe('QueueTriageController', () => {

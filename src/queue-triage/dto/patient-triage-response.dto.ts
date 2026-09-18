@@ -11,4 +11,5 @@ export class PatientTriageResponseDto {
   patientStatus: 'PENDENTE' | 'ANALISADA';
   riskClassification: string | null;
   displayColor: string;
+  aiError: string | null;
 }

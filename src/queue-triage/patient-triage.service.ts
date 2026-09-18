@@ -394,6 +394,9 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       displayColor: isCompleted
         ? triage.finalRiskColor || this.resolveRiskColor(riskClassification)
         : 'yellow',
+      aiError: triage.aiError
+        ? 'Nao foi possivel concluir a analise automatica. A triagem sera reprocessada.'
+        : null,
     };
   }
 
