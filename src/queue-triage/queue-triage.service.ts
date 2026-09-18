@@ -190,10 +190,8 @@ export class QueueTriageService {
       ponto_decisao_ativado: '',
       criterios_ponto_decisao: [],
       recursos_estimados: 0,
-      justificativa:
-        patientTriage.aiSummary ||
-        patientTriage.aiError ||
-        'Aguardando processamento da IA.',
+      // A justificativa da IA é exclusiva do painel profissional.
+      justificativa: '',
       createdAtDate,
       createdAtTime,
       aiRecommendedAction: patientTriage.aiRecommendedAction,
