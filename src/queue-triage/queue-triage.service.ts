@@ -304,13 +304,40 @@ export class QueueTriageService {
     ];
 
     for (const candidate of candidates) {
-      const normalized = this.normalizeRiskClassification(
-        typeof candidate === 'string' ? candidate : null,
-      );
+      const normalized = this.findRiskClassification(candidate);
       if (normalized) return normalized;
     }
 
+    return this.normalizeRiskLevel(
+      triage.aiResult?.nivel ?? triage.aiResult?.level ?? triage.aiResult?.riskLevel,
+    );
+  }
+
+  private findRiskClassification(value: unknown, depth = 0): string | null {
+    if (depth > 2) return null;
+
+    if (typeof value === 'string') {
+      return this.normalizeRiskClassification(value);
+    }
+    if (typeof value === 'number') {
+      return this.normalizeRiskLevel(value);
+    }
+
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      for (const nestedValue of Object.values(value)) {
+        const normalized = this.findRiskClassification(nestedValue, depth + 1);
+        if (normalized) return normalized;
+      }
+    }
+
     return null;
+  }
+
+  private normalizeRiskLevel(value: unknown): string | null {
+    const level = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+    return typeof level === 'number' && Number.isInteger(level) && level >= 1 && level <= 5
+      ? `ESI-${level}`
+      : null;
   }
 
   private getRiskLevelName(risk: string | null | undefined): string {
