@@ -497,7 +497,13 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       return labelScore;
     }
 
-    const keys = ['confidence', 'confidenceScore', 'confidence_score', 'score'];
+    const keys = [
+      'confidence',
+      'confidenceScore',
+      'confidence_score',
+      'score',
+      'confianca',
+    ];
 
     for (const key of keys) {
       const numeric = this.toConfidenceNumber(data[key]);
