@@ -169,8 +169,7 @@ export class QueueTriageService {
     }
 
     const risk =
-      patientTriage.finalRiskClassification ||
-      patientTriage.aiSuggestedRiskClassification ||
+      this.readStoredRisk(patientTriage) ||
       (patientTriage.aiProcessing ? 'PROCESSANDO IA' : 'PENDENTE');
     const { createdAtDate, createdAtTime } = this.formatDateTime(
       patientTriage.createdAt,
@@ -263,8 +262,7 @@ export class QueueTriageService {
 
     return triages.map((triage) => {
       const risk =
-        triage.finalRiskClassification ||
-        triage.aiSuggestedRiskClassification ||
+        this.readStoredRisk(triage) ||
         (triage.aiProcessing ? 'PROCESSANDO IA' : 'PENDENTE');
 
       return {
@@ -285,7 +283,34 @@ export class QueueTriageService {
   }
 
   private getRiskPriority(risk: string | null | undefined): number {
-    return RISK_PRIORITY[risk as RiskLevel] ?? 0;
+    const normalizedRisk = this.normalizeRiskClassification(risk);
+    return RISK_PRIORITY[normalizedRisk as RiskLevel] ?? 0;
+  }
+
+  private normalizeRiskClassification(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const match = value.match(/\bESI\s*[-_ ]?\s*([1-5])\b/i);
+    return match ? `ESI-${match[1]}` : null;
+  }
+
+  private readStoredRisk(triage: PatientTriage): string | null {
+    const candidates = [
+      triage.finalRiskClassification,
+      triage.aiSuggestedRiskClassification,
+      triage.aiResult?.suggestedRiskClassification,
+      triage.aiResult?.classificacao,
+      triage.aiResult?.riskClassification,
+      triage.aiResult?.risk,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = this.normalizeRiskClassification(
+        typeof candidate === 'string' ? candidate : null,
+      );
+      if (normalized) return normalized;
+    }
+
+    return null;
   }
 
   private getRiskLevelName(risk: string | null | undefined): string {

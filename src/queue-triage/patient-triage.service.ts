@@ -424,10 +424,7 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
 
   private toAiTriageFields(data: Record<string, any>): AiTriageFields {
     const result = this.withNormalizedConfidence(data);
-    const suggestedRiskClassification = this.readString(data, [
-      'suggestedRiskClassification',
-      'classificacao',
-    ]);
+    const suggestedRiskClassification = this.readRiskClassification(data);
     const suggestedRiskColor =
       this.readString(data, ['suggestedRiskColor', 'riskColor']) ||
       this.resolveRiskColor(suggestedRiskClassification);
@@ -458,6 +455,28 @@ export class PatientTriageService implements OnModuleInit, OnModuleDestroy {
       if (typeof value === 'number' || typeof value === 'boolean') {
         return String(value);
       }
+    }
+
+    return null;
+  }
+
+  private normalizeRiskClassification(value: string | null): string | null {
+    if (!value) return null;
+    const match = value.match(/\bESI\s*[-_ ]?\s*([1-5])\b/i);
+    return match ? `ESI-${match[1]}` : null;
+  }
+
+  private readRiskClassification(data: Record<string, any>): string | null {
+    for (const key of [
+      'suggestedRiskClassification',
+      'classificacao',
+      'riskClassification',
+      'risk',
+    ]) {
+      const normalized = this.normalizeRiskClassification(
+        this.readString(data, [key]),
+      );
+      if (normalized) return normalized;
     }
 
     return null;
