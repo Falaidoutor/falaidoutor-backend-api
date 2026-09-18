@@ -22,9 +22,17 @@ function getDatabaseConfig(config: ConfigService): TypeOrmModuleOptions {
     entities,
     synchronize: false,
     logging: false,
-    retryAttempts: Number(config.get<string>('DB_RETRY_ATTEMPTS', '1')),
+    retryAttempts: Number(config.get<string>('DB_RETRY_ATTEMPTS', '3')),
     retryDelay: Number(config.get<string>('DB_RETRY_DELAY', '1000')),
     extra: {
+      // Serverless functions can create several Nest instances at once.
+      // Keep one connection per instance unless the deployment explicitly
+      // opts into a larger pool, avoiding exhaustion in session-mode poolers.
+      max: Number(config.get<string>('DB_POOL_SIZE', '1')),
+      idleTimeoutMillis: Number(
+        config.get<string>('DB_IDLE_TIMEOUT_MS', '1000'),
+      ),
+      allowExitOnIdle: true,
       connectionTimeoutMillis: Number(
         config.get<string>('DB_CONNECTION_TIMEOUT_MS', '5000'),
       ),
